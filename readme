@@ -1,0 +1,69 @@
+# OW3D Third-Order Initialization Generators
+
+This repository is now scoped to two MATLAB generators for OceanWave3D hot-start initialization:
+
+- `uni_generator.m`
+  Generates unidirectional third-order OW3D initial conditions using the existing MF12 dispersion correction, Dalzell second-order bound-wave correction, and higher-order VWA terms already used in this project.
+- `mf12_directional_generator.m`
+  Generates directional third-order OW3D initial conditions using the local MF12 spectral reconstruction workflow in `irregularWavesMF12/Source`.
+
+## Repository Contents
+
+Core scripts:
+
+- `uni_generator.m`
+- `mf12_directional_generator.m`
+
+Required support code:
+
+- `irregularWavesMF12/`
+  Bundled MF12 implementation used by both generator workflows.
+- `test functions for VWA Opensource/`
+  VWA support code still required by `uni_generator.m`.
+
+Generated outputs:
+
+- Each generator writes `OceanWave3D.init`, `OceanWave3D.inp`, and `OW_readme.txt` into its own output folder.
+- `mf12_directional_generator.m` also writes quick-look figures for the linear wave group and the third-order field.
+
+## Intended Usage
+
+Run from the repository root in MATLAB:
+
+```matlab
+run('uni_generator.m');
+run('mf12_directional_generator.m');
+```
+
+The directional generator is currently configured to run a single sample case by default:
+
+- `kd = 1.0`
+- `Akp = 0.02`
+- `Alpha = 8.0`
+- `spread = 45 deg`
+- `heading = 0 deg`
+- `phi = 0 deg`
+
+Set `CFG.single_case_only = false` inside `mf12_directional_generator.m` to expand back to multiple parameter combinations.
+
+## Output Format
+
+Both generators write OW3D hot-start files with the same structure:
+
+- `OceanWave3D.init`
+  Header plus pointwise `eta` and free-surface potential data.
+- `OceanWave3D.inp`
+  Matching OW3D input file for the generated case.
+- `OW_readme.txt`
+  Case-specific parameter summary.
+
+## Development Log
+
+- 2026-03-12
+  Reduced the repository scope to unidirectional and directional third-order OW3D initialization generators.
+- 2026-03-12
+  Added `mf12_directional_generator.m` for MF12-based directional third-order wave-group initialization.
+- 2026-03-12
+  Updated the directional generator to use only local repository dependencies so it can be pushed to GitHub cleanly.
+- 2026-03-12
+  Added built-in visualization output for the linear directional wave group and the third-order MF12 result.
