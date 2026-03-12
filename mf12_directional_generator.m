@@ -11,7 +11,7 @@ CFG = struct();
 % -------------------- Sea state --------------------
 CFG.g = 9.81;
 CFG.kp = 0.0279;
-CFG.Akp_list = [0.02];
+CFG.Akp_list = [0.12];
 CFG.Alpha_list = [8];
 CFG.kd_list = [1];
 CFG.phases_deg = 0:90:270;
@@ -19,23 +19,37 @@ CFG.single_case_only = true;
 
 % -------------------- Directional wave-group definition --------------------
 CFG.heading_deg = 0;
-CFG.spread_deg = 5;
+CFG.spread_deg = 15;
 CFG.energy_keep_frac = 0.995;
-CFG.max_components = 200;
+CFG.max_components = 300;
 
 % -------------------- Domain / timing --------------------
 CFG.Tp = 12;
-CFG.t_init_periods = -15;
+CFG.t_init_periods = -10;
 CFG.t_focus = 0.0;
 CFG.duration_periods = 30;
 CFG.steps_per_period = 30;
-CFG.Lx_lambda = 30;
-CFG.Ly_lambda = 20;
-CFG.Nx = 1025;
-CFG.Ny = 257;
+CFG.Lx_lambda = 40; % Physical domain size in x: Lx = Lx_lambda * lambda_p. Increase this if you want a physically larger x-domain.
+CFG.Ly_lambda = 15; % Physical domain size in y: Ly = Ly_lambda * lambda_p. Increase this if you want a physically larger y-domain.
+CFG.Nx = 1025; % Spatial resolution in x only. Increasing Nx decreases dx = Lx/Nx, but does not change the physical domain size.
+CFG.Ny = 257; % Spatial resolution in y only. Increasing Ny decreases dy = Ly/Ny, but does not change the physical domain size.
 
 % -------------------- Output --------------------
-CFG.output_dir = 'mf12_directional_generator';
+CFG.output_dir = fullfile('directional initial condition', 'test_generator');
+CFG.store_surface_stride = 0;
+CFG.i_kinematics = 20; % OW3D Section 8: enable plane/kinematics output using nOutFiles and the follow-on [xbeg xend ... tbeg tend tstride] lines
+CFG.surface_format = 1;
+CFG.n_out_files = 1;
+CFG.plane_xbeg = 1;
+CFG.plane_xend = CFG.Nx;
+CFG.plane_xstride = 1;
+CFG.plane_ybeg = 1;
+CFG.plane_yend = CFG.Ny;
+CFG.plane_ystride = 1;
+CFG.time_window_mode = 'focus_relative_periods'; % 'focus_relative_periods' or 'absolute_steps'
+CFG.focus_window_periods = [-5.0, 5.0];
+CFG.absolute_step_window = [1, 61];
+CFG.plane_tstride = 8;
 
 setup_mf12_paths();
 
@@ -108,7 +122,7 @@ for kd = kd_list
                     eta_out, phi_out, dx, dy, Lx, Ly, dt_kd, Akp, phi_shift_deg);
 
                 write_ow3d_inp(fullfile(write_path, 'OceanWave3D.inp'), ...
-                    Lx, Ly, h, CFG.Nx, CFG.Ny, N_steps_kd, dt_kd);
+                    CFG, Lx, Ly, h, CFG.Nx, CFG.Ny, N_steps_kd, dt_kd);
 
                 write_readme(fullfile(write_path, 'OW_readme.txt'), ...
                     CFG, meta, Akp, Alpha, kd, h, Tp_kd, dx, dy, t_eval, phi_shift_deg);
@@ -219,12 +233,14 @@ function write_ow3d_init(file_name, eta, phi, dx, dy, Lx, Ly, dt, Akp, phi_shift
     end
 end
 
-function write_ow3d_inp(file_name, Lx, Ly, h, nx, ny, n_steps, dt)
+function write_ow3d_inp(file_name, CFG, Lx, Ly, h, nx, ny, n_steps, dt)
     f = fopen(file_name, 'w');
     if f < 0
         error('Unable to open file for writing: %s', file_name);
     end
     cleanup = onCleanup(@() fclose(f));
+
+    [tbeg, tend, tstride] = resolve_plane_window(CFG, n_steps + 1);
 
     fprintf(f, 'Data for MF12 directional wave-group initialization %s <-\n', datestr(now, 0));
     fprintf(f, '-1 2 <-\n');
@@ -234,7 +250,11 @@ function write_ow3d_inp(file_name, Lx, Ly, h, nx, ny, n_steps, dt)
     fprintf(f, '9.81 <-\n');
     fprintf(f, '1 3 0 55 1e-6 1e-6 1 V 1 1 20 <-\n');
     fprintf(f, '0.05 1.00 1.84 2 0 0 1 6 32 <-\n');
-    fprintf(f, '10 1 <-\n');
+    fprintf(f, '%d %d %d %d <-\n', CFG.store_surface_stride, CFG.i_kinematics, CFG.surface_format, CFG.n_out_files);
+    fprintf(f, '%d %d %d %d %d %d %d %d %d <-\n', ...
+        CFG.plane_xbeg, CFG.plane_xend, CFG.plane_xstride, ...
+        CFG.plane_ybeg, CFG.plane_yend, CFG.plane_ystride, ...
+        tbeg, tend, tstride);
     fprintf(f, '1 0 <-\n');
     fprintf(f, '0 6 10 0.08 0.08 0.4 <-\n');
     fprintf(f, '0 8. 3 X 0.0 <-\n');
@@ -260,6 +280,29 @@ function write_readme(file_name, CFG, meta, Akp, Alpha, kd, h, Tp, dx, dy, t_eva
     fprintf(f, 'k-range=[%.6f, %.6f] 1/m\n', meta.kmin, meta.kmax);
     fprintf(f, 'Grid: Nx=%d, Ny=%d, dx=%.6f m, dy=%.6f m\n', CFG.Nx, CFG.Ny, dx, dy);
     fprintf(f, 'Model: MF12 spectral coefficients/order-3, single directional wave group\n');
+    [tbeg, tend, tstride] = resolve_plane_window(CFG, round(CFG.duration_periods * CFG.steps_per_period) + 1);
+    fprintf(f, 'Plane output: x=[%d:%d:%d], y=[%d:%d:%d], t=[%d:%d:%d]\n', ...
+        CFG.plane_xbeg, CFG.plane_xstride, CFG.plane_xend, ...
+        CFG.plane_ybeg, CFG.plane_ystride, CFG.plane_yend, ...
+        tbeg, tstride, tend);
+end
+
+function [tbeg, tend, tstride] = resolve_plane_window(CFG, n_steps_total)
+    switch lower(CFG.time_window_mode)
+        case 'focus_relative_periods'
+            n_focus = round(abs(CFG.t_init_periods) * CFG.steps_per_period) + 1;
+            tbeg = n_focus + round(CFG.focus_window_periods(1) * CFG.steps_per_period);
+            tend = n_focus + round(CFG.focus_window_periods(2) * CFG.steps_per_period);
+        case 'absolute_steps'
+            tbeg = CFG.absolute_step_window(1);
+            tend = CFG.absolute_step_window(2);
+        otherwise
+            error('Unknown time_window_mode: %s', CFG.time_window_mode);
+    end
+
+    tbeg = max(1, min(n_steps_total, round(tbeg)));
+    tend = max(tbeg, min(n_steps_total, round(tend)));
+    tstride = max(1, round(CFG.plane_tstride));
 end
 
 function save_visualizations(write_path, eta_lin, eta_total, phi_lin, phi_total, Lx, Ly)

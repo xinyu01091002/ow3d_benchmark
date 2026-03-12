@@ -21,10 +21,27 @@ Required support code:
 - `test functions for VWA Opensource/`
   VWA support code still required by `uni_generator.m`.
 
+Reference notes:
+
+- `Explanation_SettingsFile.rtf`
+  Original OW3D settings-file notes kept locally.
+- `Explanation_SettingsFile.txt`
+  Plain-text backup extracted from the RTF for easier searching and GitHub viewing.
+
+Local output roots:
+
+- `uni initial condition/`
+  Working area for unidirectional generated cases.
+- `directional initial condition/`
+  Working area for directional generated cases.
+
 Generated outputs:
 
 - Each generator writes `OceanWave3D.init`, `OceanWave3D.inp`, and `OW_readme.txt` into its own output folder.
 - `mf12_directional_generator.m` also writes quick-look figures for the linear wave group and the third-order field.
+- Current default output layout is:
+  - `uni initial condition/test_generator/...`
+  - `directional initial condition/test_generator/...`
 
 ## Intended Usage
 
@@ -35,16 +52,24 @@ run('uni_generator.m');
 run('mf12_directional_generator.m');
 ```
 
-The directional generator is currently configured to run a single sample case by default:
+The directional generator is currently set up as a test generator and can be edited directly in the configuration block at the top of the script.
 
-- `kd = 1.0`
-- `Akp = 0.02`
-- `Alpha = 8.0`
-- `spread = 45 deg`
-- `heading = 0 deg`
-- `phi = 0 deg`
+Important parameter groups in `mf12_directional_generator.m`:
 
-Set `CFG.single_case_only = false` inside `mf12_directional_generator.m` to expand back to multiple parameter combinations.
+- sea state:
+  - `Akp_list`
+  - `Alpha_list`
+  - `kd_list`
+- domain size:
+  - `Lx_lambda`, `Ly_lambda`
+- grid resolution:
+  - `Nx`, `Ny`
+- directional spreading:
+  - `heading_deg`, `spread_deg`
+- output timing:
+  - `time_window_mode`
+  - `focus_window_periods`
+  - `plane_tstride`
 
 ## Output Format
 
@@ -57,6 +82,18 @@ Both generators write OW3D hot-start files with the same structure:
 - `OW_readme.txt`
   Case-specific parameter summary.
 
+For the directional generator, the current `.inp` writing logic is set up to:
+
+- disable full-domain time-step storage with `store_surface_stride = 0`
+- enable plane output with `i_kinematics = 20`
+- save plane data only inside a user-defined time window
+
+The current default time window is relative to focus time:
+
+- `focus_window_periods = [-5, 5]`
+
+which means the plane output is limited to approximately `focus time ± 5Tp`.
+
 ## Development Log
 
 - 2026-03-12
@@ -67,3 +104,9 @@ Both generators write OW3D hot-start files with the same structure:
   Updated the directional generator to use only local repository dependencies so it can be pushed to GitHub cleanly.
 - 2026-03-12
   Added built-in visualization output for the linear directional wave group and the third-order MF12 result.
+- 2026-03-12
+  Added a plain-text backup of `Explanation_SettingsFile.rtf` as `Explanation_SettingsFile.txt`.
+- 2026-03-12
+  Reorganized generated-case roots to `uni initial condition/` and `directional initial condition/`.
+- 2026-03-12
+  Added plane-output time-window control to the directional generator so storage can be limited to focus-adjacent times.

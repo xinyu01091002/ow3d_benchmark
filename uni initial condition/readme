@@ -1,0 +1,12 @@
+Unidirectional Initial Condition
+
+Date: 2026-03-12
+
+Purpose:
+- Store unidirectional third-order OceanWave3D initialization cases.
+- Current working subfolder: `test_generator`
+
+Planned Work:
+- Keep the unidirectional generator as the baseline reference case.
+- Align output settings with the directional generator where useful.
+- Add validated benchmark cases after checking OW3D results.

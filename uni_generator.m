@@ -17,7 +17,7 @@ CONFIG.duration_periods = 20; % Total simulation duration in multiples of Tp
 CONFIG.phases = 0:90:270;   % Phase shifts
 CONFIG.ORDER = 5;           % Max order to compute (VWA)
 CONFIG.t_init = -20;        % Initial time factor
-CONFIG.output_dir = "uni_VWA_test_generator_MF12disp"; % Output directory
+CONFIG.output_dir = fullfile("uni initial condition", "test_generator"); % Output directory
 
 % Constants
 kp = CONFIG.kp;
