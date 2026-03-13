@@ -35,6 +35,11 @@ CFG.focus_x_fraction = 0.5; % Focus point as a fraction of Lx.
 CFG.output_dir = fullfile('uni initial condition', 'test_generator');
 CFG.store_surface_stride = 1; % Section 8 surface output only. 1 saves every step, 2 every second step, etc.
 CFG.surface_format = 1; % Keep the existing OW3D surface-output format used in this project.
+CFG.batch_purpose = 'Generate unidirectional OW3D initial conditions for MF12 benchmark and validation runs.';
+CFG.batch_notes = [ ...
+    "This batch is intended to provide one OW3D-ready subdirectory per unidirectional test case."; ...
+    "Use these cases to validate MF12-based unidirectional initial conditions against downstream OW3D results."; ...
+    "Keep the subdirectories easy to compare so phase and parameter sweeps remain traceable."];
 
 setup_mf12_paths();
 
@@ -47,6 +52,10 @@ y = 0;
 fprintf('MF12 unidirectional generator\n');
 fprintf('Domain: Lx=%.3f m, Nx=%d\n', Lx, CFG.Nx);
 fprintf('Grid: dx=%.3f m\n', dx);
+
+batch_root = fullfile(pwd, CFG.output_dir);
+ensure_dir(batch_root);
+write_batch_readme(fullfile(batch_root, 'readme'), CFG, Lx, dx);
 
 kd_list = CFG.kd_list;
 Akp_list = CFG.Akp_list;
@@ -223,6 +232,40 @@ function write_case_readme(file_name, CFG, meta, Akp, Alpha, kd, h, Tp, dx, t_ev
     fprintf(f, 'Total OW3D duration after initialization: %.2f Tp\n', CFG.duration_periods);
     fprintf(f, 'Surface output stride: every %d time step(s)\n', abs(CFG.store_surface_stride));
     fprintf(f, 'Kinematic output: disabled\n');
+end
+
+function write_batch_readme(file_name, CFG, Lx, dx)
+    f = fopen(file_name, 'w');
+    if f < 0
+        error('Unable to open file for writing: %s', file_name);
+    end
+    cleanup = onCleanup(@() fclose(f));
+
+    fprintf(f, 'Unidirectional OW3D initial-condition batch\n');
+    fprintf(f, 'Updated: %s\n\n', datestr(now, 0));
+
+    fprintf(f, 'Purpose\n');
+    fprintf(f, '%s\n\n', CFG.batch_purpose);
+
+    fprintf(f, 'What this batch is trying to verify\n');
+    for i = 1:numel(CFG.batch_notes)
+        fprintf(f, '- %s\n', CFG.batch_notes(i));
+    end
+    fprintf(f, '\n');
+
+    fprintf(f, 'Current workflow\n');
+    fprintf(f, '- Direct MF12 unidirectional reconstruction for each generated phase/state combination.\n');
+    fprintf(f, '- Surface-only OW3D output; no kinematic export.\n');
+    fprintf(f, '- One subdirectory per generated case.\n\n');
+
+    fprintf(f, 'Current settings snapshot\n');
+    fprintf(f, '- output directory = %s\n', CFG.output_dir);
+    fprintf(f, '- phases = [%s] deg\n', strjoin(string(CFG.phases_deg), ', '));
+    fprintf(f, '- t_init = %.2f Tp\n', CFG.t_init_periods);
+    fprintf(f, '- duration = %.2f Tp\n', CFG.duration_periods);
+    fprintf(f, '- domain length = %.3f m\n', Lx);
+    fprintf(f, '- grid = [%d x 1], dx = %.3f m\n', CFG.Nx, dx);
+    fprintf(f, '- surface stride = %d\n', CFG.store_surface_stride);
 end
 
 function save_visualizations(write_path, x, eta, phi_surface)

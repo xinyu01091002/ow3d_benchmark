@@ -20,8 +20,8 @@ CFG.single_case_only = true;
 % -------------------- Directional wave-group definition --------------------
 CFG.heading_deg = 0;
 CFG.spread_deg = 15;
-CFG.energy_keep_frac = 0.995;
-CFG.max_components = 300;
+CFG.energy_keep_frac = 0.999;
+CFG.max_components = 800;
 
 % -------------------- Domain / timing --------------------
 CFG.Tp = 12;
@@ -35,9 +35,15 @@ CFG.Nx = 1025; % Spatial resolution in x only. Increasing Nx decreases dx = Lx/N
 CFG.Ny = 257; % Spatial resolution in y only. Increasing Ny decreases dy = Ly/Ny, but does not change the physical domain size.
 
 % -------------------- Output --------------------
-CFG.output_dir = fullfile('directional initial condition', 'test_generator');
+CFG.output_dir = fullfile('directional initial condition', 'test_generator4');
 CFG.store_surface_stride = 1; % Section 8 surface output only. 1 saves every time step, 2 every second step, etc. Negative values request ascii output.
 CFG.surface_format = 1; % Keep the existing OW3D surface-output format used in this project.
+CFG.reuse_third_order_from_phase0 = true; % Hybrid workflow: compute order<=2 directly for each phase, and reuse the phase=0 third-order increment via a 3*phi shift.
+CFG.batch_purpose = 'Generate directional OW3D initial conditions for validating the hybrid MF12 workflow.';
+CFG.batch_notes = [ ...
+    "This batch is intended to compare full four-phase OW3D runs against a cheaper generator workflow."; ...
+    "The main validation target is whether direct order<=2 plus shifted order-3 reproduces the expected four-phase behavior."; ...
+    "Each subdirectory is a runnable OW3D case and should stay easy to compare during postprocessing."];
 
 setup_mf12_paths();
 
@@ -54,6 +60,10 @@ fprintf('Domain: Lx=%.3f m, Ly=%.3f m, Nx=%d, Ny=%d\n', Lx, Ly, CFG.Nx, CFG.Ny);
 fprintf('Grid: dx=%.3f m, dy=%.3f m\n', dx, dy);
 fprintf('Initial condition time: %.2f Tp relative to focus\n', CFG.t_init_periods);
 fprintf('Total OW3D duration after initialization: %.2f Tp\n', CFG.duration_periods);
+
+batch_root = fullfile(pwd, CFG.output_dir);
+ensure_dir(batch_root);
+write_batch_readme(fullfile(batch_root, 'readme'), CFG, Lx, Ly, dx, dy);
 
 kd_list = CFG.kd_list;
 Akp_list = CFG.Akp_list;
@@ -85,16 +95,38 @@ for kd = kd_list
             xf = 0.5 * Lx;
             yf = 0.5 * Ly;
             omega_lin = sqrt(CFG.g * hypot(kx, ky) .* tanh(h * hypot(kx, ky)));
+            phase_focus_0 = -(kx * xf + ky * yf) + omega_lin * CFG.t_focus;
+
+            phase0_cache = struct();
+            if CFG.reuse_third_order_from_phase0
+                a0 = amp_base .* cos(phase_focus_0);
+                b0 = amp_base .* sin(phase_focus_0);
+                [eta0_parts, phi0_parts] = reconstruct_order_parts( ...
+                    CFG.g, h, a0, b0, kx, ky, Lx, Ly, CFG.Nx, CFG.Ny, t_eval);
+                phase0_cache.eta3 = eta0_parts.order3_increment;
+                phase0_cache.phi3 = phi0_parts.order3_increment;
+            end
 
             for phi_shift_deg = phase_list
-                phase_focus = -(kx * xf + ky * yf) + omega_lin * CFG.t_focus + deg2rad(phi_shift_deg);
+                phase_focus = phase_focus_0 + deg2rad(phi_shift_deg);
                 a = amp_base .* cos(phase_focus);
                 b = amp_base .* sin(phase_focus);
 
-                coeffs_lin = mf12_spectral_coefficients(1, CFG.g, h, a, b, kx, ky, 0, 0);
-                coeffs = mf12_spectral_coefficients(3, CFG.g, h, a, b, kx, ky, 0, 0);
-                [eta_lin, phi_lin] = mf12_spectral_surface(coeffs_lin, Lx, Ly, CFG.Nx, CFG.Ny, t_eval);
-                [eta_mf12, phi_mf12] = mf12_spectral_surface(coeffs, Lx, Ly, CFG.Nx, CFG.Ny, t_eval);
+                [eta_parts, phi_parts] = reconstruct_order_parts( ...
+                    CFG.g, h, a, b, kx, ky, Lx, Ly, CFG.Nx, CFG.Ny, t_eval);
+
+                eta_lin = eta_parts.order1_total;
+                phi_lin = phi_parts.order1_total;
+                eta_mf12 = eta_parts.order2_total + eta_parts.order3_increment;
+                phi_mf12 = phi_parts.order2_total + phi_parts.order3_increment;
+
+                if CFG.reuse_third_order_from_phase0 && phi_shift_deg ~= 0
+                    phi_rad = deg2rad(phi_shift_deg);
+                    eta_mf12 = eta_parts.order2_total + ...
+                        shift_field_in_fft(phase0_cache.eta3, Lx, Ly, phi_rad, 3, +1);
+                    phi_mf12 = phi_parts.order2_total + ...
+                        shift_field_in_fft(phase0_cache.phi3, Lx, Ly, phi_rad, 3, +1);
+                end
 
                 % mf12_spectral_surface returns arrays of size [Ny x Nx].
                 % Transpose to match the historical OW3D export convention used in this repo: [Nx x Ny].
@@ -263,11 +295,56 @@ function write_readme(file_name, CFG, meta, Akp, Alpha, kd, h, Tp, dx, dy, t_eva
     fprintf(f, 'Components=%d, energy keep frac=%.5f\n', meta.n_components, meta.energy_keep_frac);
     fprintf(f, 'k-range=[%.6f, %.6f] 1/m\n', meta.kmin, meta.kmax);
     fprintf(f, 'Grid: Nx=%d, Ny=%d, dx=%.6f m, dy=%.6f m\n', CFG.Nx, CFG.Ny, dx, dy);
-    fprintf(f, 'Model: MF12 spectral coefficients/order-3, single directional wave group\n');
+    if CFG.reuse_third_order_from_phase0
+        fprintf(f, 'Model: MF12 hybrid workflow (direct order<=2, phase=0 reused for order-3 increment)\n');
+    else
+        fprintf(f, 'Model: MF12 spectral coefficients/order-3, single directional wave group\n');
+    end
     fprintf(f, 'Initial condition time relative to focus: %.2f Tp\n', CFG.t_init_periods);
     fprintf(f, 'Total OW3D duration after initialization: %.2f Tp\n', CFG.duration_periods);
     fprintf(f, 'Surface output stride: every %d time step(s)\n', abs(CFG.store_surface_stride));
     fprintf(f, 'Kinematic output: disabled\n');
+end
+
+function write_batch_readme(file_name, CFG, Lx, Ly, dx, dy)
+    f = fopen(file_name, 'w');
+    if f < 0
+        error('Unable to open file for writing: %s', file_name);
+    end
+    cleanup = onCleanup(@() fclose(f));
+
+    fprintf(f, 'Directional OW3D initial-condition batch\n');
+    fprintf(f, 'Updated: %s\n\n', datestr(now, 0));
+
+    fprintf(f, 'Purpose\n');
+    fprintf(f, '%s\n\n', CFG.batch_purpose);
+
+    fprintf(f, 'What this batch is trying to verify\n');
+    for i = 1:numel(CFG.batch_notes)
+        fprintf(f, '- %s\n', CFG.batch_notes(i));
+    end
+    fprintf(f, '\n');
+
+    fprintf(f, 'Current workflow\n');
+    if CFG.reuse_third_order_from_phase0
+        fprintf(f, '- Direct MF12 reconstruction up to order 2 for each requested phase.\n');
+        fprintf(f, '- Reuse the phase=0 third-order increment by applying a 3phi shift for the non-zero phase cases.\n');
+    else
+        fprintf(f, '- Direct MF12 order-3 reconstruction for every requested phase.\n');
+    end
+    fprintf(f, '- Surface-only OW3D output; no kinematic export.\n');
+    fprintf(f, '- One subdirectory per generated case.\n\n');
+
+    fprintf(f, 'Current settings snapshot\n');
+    fprintf(f, '- output directory = %s\n', CFG.output_dir);
+    fprintf(f, '- phases = [%s] deg\n', strjoin(string(CFG.phases_deg), ', '));
+    fprintf(f, '- heading = %.1f deg\n', CFG.heading_deg);
+    fprintf(f, '- spread = %.1f deg\n', CFG.spread_deg);
+    fprintf(f, '- t_init = %.2f Tp\n', CFG.t_init_periods);
+    fprintf(f, '- duration = %.2f Tp\n', CFG.duration_periods);
+    fprintf(f, '- domain = [%.3f, %.3f] m\n', Lx, Ly);
+    fprintf(f, '- grid = [%d, %d], dx = %.3f m, dy = %.3f m\n', CFG.Nx, CFG.Ny, dx, dy);
+    fprintf(f, '- surface stride = %d\n', CFG.store_surface_stride);
 end
 
 function save_visualizations(write_path, eta_lin, eta_total, phi_lin, phi_total, Lx, Ly)
@@ -331,4 +408,51 @@ function save_visualizations(write_path, eta_lin, eta_total, phi_lin, phi_total,
     lighting gouraud;
     exportgraphics(fig_lin, fullfile(write_path, 'linear_wave_group_surface.png'), 'Resolution', 220);
     close(fig_lin);
+end
+
+function [eta_parts, phi_parts] = reconstruct_order_parts(g, h, a, b, kx, ky, Lx, Ly, Nx, Ny, t_eval)
+    coeffs1 = mf12_spectral_coefficients(1, g, h, a, b, kx, ky, 0, 0);
+    coeffs2 = mf12_spectral_coefficients(2, g, h, a, b, kx, ky, 0, 0);
+    coeffs3 = mf12_spectral_coefficients(3, g, h, a, b, kx, ky, 0, 0);
+
+    [eta1, phi1] = mf12_spectral_surface(coeffs1, Lx, Ly, Nx, Ny, t_eval);
+    [eta2, phi2] = mf12_spectral_surface(coeffs2, Lx, Ly, Nx, Ny, t_eval);
+    [eta3, phi3] = mf12_spectral_surface(coeffs3, Lx, Ly, Nx, Ny, t_eval);
+
+    eta_parts = struct();
+    eta_parts.order1_total = eta1;
+    eta_parts.order2_total = eta2;
+    eta_parts.order3_total = eta3;
+    eta_parts.order2_increment = eta2 - eta1;
+    eta_parts.order3_increment = eta3 - eta2;
+
+    phi_parts = struct();
+    phi_parts.order1_total = phi1;
+    phi_parts.order2_total = phi2;
+    phi_parts.order3_total = phi3;
+    phi_parts.order2_increment = phi2 - phi1;
+    phi_parts.order3_increment = phi3 - phi2;
+end
+
+function field_shifted = shift_field_in_fft(field0, Lx, Ly, phase_shift, harmonic_order, sign_flag)
+    [Ny, Nx] = size(field0);
+    kx_idx = (-floor(Nx / 2)):(ceil(Nx / 2) - 1);
+    ky_idx = (-floor(Ny / 2)):(ceil(Ny / 2) - 1);
+    dkx = 2 * pi / Lx;
+    dky = 2 * pi / Ly;
+    [KXI, KYI] = meshgrid(kx_idx, ky_idx);
+    kx = KXI * dkx;
+    ky = KYI * dky;
+
+    pos_mask = (kx > 0) | (kx == 0 & ky > 0);
+    neg_mask = (kx < 0) | (kx == 0 & ky < 0);
+
+    F = fftshift(fft2(field0));
+    F(pos_mask) = F(pos_mask) .* exp(1i * sign_flag * harmonic_order * phase_shift);
+    F(neg_mask) = F(neg_mask) .* exp(-1i * sign_flag * harmonic_order * phase_shift);
+
+    field_shifted = ifft2(ifftshift(F));
+    if isreal(field0)
+        field_shifted = real(field_shifted);
+    end
 end

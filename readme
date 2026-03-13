@@ -1,47 +1,72 @@
-# OW3D Third-Order Initialization Generators
+# OW3D MF12 Generators And Utilities
 
-This repository is focused on two MATLAB generators for OceanWave3D hot-start initialization:
+This repository is currently organized around MF12-based MATLAB tools for preparing and checking OceanWave3D initial conditions.
+
+## Main Scripts
 
 - `mf12_unidirectional_generator.m`
-  Generates unidirectional third-order OW3D initial conditions using the bundled MF12 direct reconstruction interface.
+  Generates unidirectional OW3D initial conditions using the bundled MF12 direct interface.
 - `mf12_directional_generator.m`
-  Generates directional third-order OW3D initial conditions using the local MF12 spectral reconstruction workflow in `irregularWavesMF12/Source`.
+  Generates directional OW3D initial conditions using the bundled MF12 spectral interface.
+  The current directional workflow is a hybrid test workflow:
+  - direct MF12 reconstruction up to order 2 for each phase
+  - reuse of the phase-0 third-order increment through a `3phi` phase shift for the non-zero phase cases
+- `postprocess_ow3d_boundwaves.m`
+  Reads OW3D `EP_XXXXX.bin` files, applies the four-phase reconstruction workflow, and plots first-, second-, and third-order bound-wave fields.
+- `validate_fourphase_from_phase0_components.m`
+  Validation script used to test whether four-phase directional cases can be accelerated by reusing phase-0 MF12 components.
+- `validate_phase_shift_from_single_run.m`
+  Earlier validation sandbox kept for comparison with the newer component-based test.
 
 ## Repository Contents
 
-Core scripts:
-
-- `mf12_unidirectional_generator.m`
-- `mf12_directional_generator.m`
-
-Required support code:
+Core dependency:
 
 - `irregularWavesMF12/`
-  Bundled MF12 implementation used by both generator workflows.
+  Bundled MF12 implementation used by the generators and validation scripts.
 
-Reference notes:
+Reference note:
 
-- `Explanation_SettingsFile.rtf`
-  Original OW3D settings-file notes kept locally.
 - `Explanation_SettingsFile.txt`
-  Plain-text backup extracted from the RTF for easier searching and GitHub viewing.
+  Plain-text backup of the OW3D settings-file explanation for quick local reference.
 
-Local output roots:
+Generated-case roots:
 
 - `uni initial condition/`
-  Working area for unidirectional generated cases.
 - `directional initial condition/`
-  Working area for directional generated cases.
 
-Generated outputs:
+Each generator now writes a batch-level `readme` into its output root so the purpose of the generated subdirectories is documented locally.
 
-- Each generator writes `OceanWave3D.init`, `OceanWave3D.inp`, and `OW_readme.txt` into its own output folder.
-- `mf12_directional_generator.m` also writes quick-look figures for the linear wave group and the third-order field.
-- Current default output layout is:
-  - `uni initial condition/test_generator/...`
-  - `directional initial condition/test_generator/...`
+## Output Structure
 
-## Intended Usage
+Each generated case folder contains:
+
+- `OceanWave3D.init`
+- `OceanWave3D.inp`
+- `OW_readme.txt`
+
+The directional generator also writes quick-look figures for the linear field and the generated nonlinear field.
+
+The current OW3D export style is:
+
+- surface output only
+- no kinematic-plane output
+- standard OW3D simulation duration controlled by `t_init_periods` and `duration_periods`
+
+## Current Directional Workflow
+
+The main directional generator has been updated to support a hybrid workflow motivated by the recent validation work:
+
+- `order = 1` and `order = 2` are reconstructed directly for each requested phase
+- the third-order increment from `phase = 0` is reused for the other phase cases through FFT-based `3phi` phase shifting
+
+This was introduced because the validation scripts showed:
+
+- first-order reuse from phase 0 matches direct recomputation at machine precision
+- third-order increment reuse from phase 0 also matches direct recomputation at machine precision in the tested directional cases
+- second-order reuse is not exact when treated as a single `2phi` object, so second order is still computed directly
+
+## Typical Usage
 
 Run from the repository root in MATLAB:
 
@@ -50,61 +75,37 @@ run('mf12_unidirectional_generator.m');
 run('mf12_directional_generator.m');
 ```
 
-The directional generator is currently set up as a test generator and can be edited directly in the configuration block at the top of the script.
+Then use the utilities as needed:
 
-Important parameter groups in `mf12_directional_generator.m`:
+```matlab
+run('postprocess_ow3d_boundwaves.m');
+run('validate_fourphase_from_phase0_components.m');
+```
 
-- sea state:
-  - `Akp_list`
-  - `Alpha_list`
-  - `kd_list`
-- domain size:
-  - `Lx_lambda`, `Ly_lambda`
-- grid resolution:
-  - `Nx`, `Ny`
-- directional spreading:
-  - `heading_deg`, `spread_deg`
-- simulation timing:
-  - `t_init_periods`
-  - `duration_periods`
-- surface output:
-  - `store_surface_stride`
-  - `surface_format`
+## Notes
 
-## Output Format
-
-Both generators write OW3D hot-start files with the same structure:
-
-- `OceanWave3D.init`
-  Header plus pointwise `eta` and free-surface potential data.
-- `OceanWave3D.inp`
-  Matching OW3D input file for the generated case.
-- `OW_readme.txt`
-  Case-specific parameter summary.
-
-For the directional generator, the current `.inp` writing logic is set up to:
-
-- keep normal OW3D simulation duration using `t_init_periods` and `duration_periods`
-- disable kinematic-plane output
-- write surface output only, controlled by `store_surface_stride`
-
-The unidirectional generator now follows the same surface-only export style and no longer uses the older Dalzell/VWA mixed workflow.
+- `Lx_lambda` and `Ly_lambda` control physical domain size in peak wavelengths.
+- `Nx` and `Ny` control spatial resolution only.
+- `store_surface_stride` controls OW3D surface-output frequency.
+- The current directional output root may be a temporary test directory, depending on the configuration block at the top of the script.
 
 ## Development Log
 
 - 2026-03-12
-  Reduced the repository scope to unidirectional and directional third-order OW3D initialization generators.
+  Reduced the repository scope to MF12-based OW3D initialization generators.
 - 2026-03-12
-  Added `mf12_directional_generator.m` for MF12-based directional third-order wave-group initialization.
+  Added the MF12 directional generator and local visualization output.
 - 2026-03-12
-  Updated the directional generator to use only local repository dependencies so it can be pushed to GitHub cleanly.
+  Added `Explanation_SettingsFile.txt` as a readable local backup.
 - 2026-03-12
-  Added built-in visualization output for the linear directional wave group and the third-order MF12 result.
-- 2026-03-12
-  Added a plain-text backup of `Explanation_SettingsFile.rtf` as `Explanation_SettingsFile.txt`.
-- 2026-03-12
-  Reorganized generated-case roots to `uni initial condition/` and `directional initial condition/`.
+  Reorganized generated-case roots under `uni initial condition/` and `directional initial condition/`.
 - 2026-03-13
-  Simplified the directional generator output logic back to normal surface-only OW3D output without kinematic-plane export.
+  Simplified OW3D export logic to surface-only output and disabled kinematic-plane export.
 - 2026-03-13
-  Rebuilt the unidirectional generator to use the bundled MF12 interface directly and removed the older mixed Dalzell/VWA logic.
+  Rebuilt the unidirectional generator to use the bundled MF12 interface directly.
+- 2026-03-13
+  Added batch-level output `readme` generation for both uni- and directional generators.
+- 2026-03-13
+  Added OW3D postprocessing and four-phase validation utilities.
+- 2026-03-13
+  Updated the directional generator to the hybrid workflow: direct order<=2, phase-0 reuse for the third-order increment.
