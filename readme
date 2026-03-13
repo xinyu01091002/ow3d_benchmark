@@ -1,9 +1,9 @@
 # OW3D Third-Order Initialization Generators
 
-This repository is now scoped to two MATLAB generators for OceanWave3D hot-start initialization:
+This repository is focused on two MATLAB generators for OceanWave3D hot-start initialization:
 
-- `uni_generator.m`
-  Generates unidirectional third-order OW3D initial conditions using the existing MF12 dispersion correction, Dalzell second-order bound-wave correction, and higher-order VWA terms already used in this project.
+- `mf12_unidirectional_generator.m`
+  Generates unidirectional third-order OW3D initial conditions using the bundled MF12 direct reconstruction interface.
 - `mf12_directional_generator.m`
   Generates directional third-order OW3D initial conditions using the local MF12 spectral reconstruction workflow in `irregularWavesMF12/Source`.
 
@@ -11,15 +11,13 @@ This repository is now scoped to two MATLAB generators for OceanWave3D hot-start
 
 Core scripts:
 
-- `uni_generator.m`
+- `mf12_unidirectional_generator.m`
 - `mf12_directional_generator.m`
 
 Required support code:
 
 - `irregularWavesMF12/`
   Bundled MF12 implementation used by both generator workflows.
-- `test functions for VWA Opensource/`
-  VWA support code still required by `uni_generator.m`.
 
 Reference notes:
 
@@ -48,7 +46,7 @@ Generated outputs:
 Run from the repository root in MATLAB:
 
 ```matlab
-run('uni_generator.m');
+run('mf12_unidirectional_generator.m');
 run('mf12_directional_generator.m');
 ```
 
@@ -66,10 +64,12 @@ Important parameter groups in `mf12_directional_generator.m`:
   - `Nx`, `Ny`
 - directional spreading:
   - `heading_deg`, `spread_deg`
-- output timing:
-  - `time_window_mode`
-  - `focus_window_periods`
-  - `plane_tstride`
+- simulation timing:
+  - `t_init_periods`
+  - `duration_periods`
+- surface output:
+  - `store_surface_stride`
+  - `surface_format`
 
 ## Output Format
 
@@ -84,15 +84,11 @@ Both generators write OW3D hot-start files with the same structure:
 
 For the directional generator, the current `.inp` writing logic is set up to:
 
-- disable full-domain time-step storage with `store_surface_stride = 0`
-- enable plane output with `i_kinematics = 20`
-- save plane data only inside a user-defined time window
+- keep normal OW3D simulation duration using `t_init_periods` and `duration_periods`
+- disable kinematic-plane output
+- write surface output only, controlled by `store_surface_stride`
 
-The current default time window is relative to focus time:
-
-- `focus_window_periods = [-5, 5]`
-
-which means the plane output is limited to approximately `focus time ± 5Tp`.
+The unidirectional generator now follows the same surface-only export style and no longer uses the older Dalzell/VWA mixed workflow.
 
 ## Development Log
 
@@ -108,5 +104,7 @@ which means the plane output is limited to approximately `focus time ± 5Tp`.
   Added a plain-text backup of `Explanation_SettingsFile.rtf` as `Explanation_SettingsFile.txt`.
 - 2026-03-12
   Reorganized generated-case roots to `uni initial condition/` and `directional initial condition/`.
-- 2026-03-12
-  Added plane-output time-window control to the directional generator so storage can be limited to focus-adjacent times.
+- 2026-03-13
+  Simplified the directional generator output logic back to normal surface-only OW3D output without kinematic-plane export.
+- 2026-03-13
+  Rebuilt the unidirectional generator to use the bundled MF12 interface directly and removed the older mixed Dalzell/VWA logic.

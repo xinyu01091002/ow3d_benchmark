@@ -25,9 +25,9 @@ CFG.max_components = 300;
 
 % -------------------- Domain / timing --------------------
 CFG.Tp = 12;
-CFG.t_init_periods = -10;
+CFG.t_init_periods = -10; % Initial condition time relative to focus.
 CFG.t_focus = 0.0;
-CFG.duration_periods = 30;
+CFG.duration_periods = 30; % Total simulated duration in units of Tp measured from t = 0 of the OW3D run.
 CFG.steps_per_period = 30;
 CFG.Lx_lambda = 40; % Physical domain size in x: Lx = Lx_lambda * lambda_p. Increase this if you want a physically larger x-domain.
 CFG.Ly_lambda = 15; % Physical domain size in y: Ly = Ly_lambda * lambda_p. Increase this if you want a physically larger y-domain.
@@ -36,20 +36,8 @@ CFG.Ny = 257; % Spatial resolution in y only. Increasing Ny decreases dy = Ly/Ny
 
 % -------------------- Output --------------------
 CFG.output_dir = fullfile('directional initial condition', 'test_generator');
-CFG.store_surface_stride = 0;
-CFG.i_kinematics = 20; % OW3D Section 8: enable plane/kinematics output using nOutFiles and the follow-on [xbeg xend ... tbeg tend tstride] lines
-CFG.surface_format = 1;
-CFG.n_out_files = 1;
-CFG.plane_xbeg = 1;
-CFG.plane_xend = CFG.Nx;
-CFG.plane_xstride = 1;
-CFG.plane_ybeg = 1;
-CFG.plane_yend = CFG.Ny;
-CFG.plane_ystride = 1;
-CFG.time_window_mode = 'focus_relative_periods'; % 'focus_relative_periods' or 'absolute_steps'
-CFG.focus_window_periods = [-5.0, 5.0];
-CFG.absolute_step_window = [1, 61];
-CFG.plane_tstride = 8;
+CFG.store_surface_stride = 1; % Section 8 surface output only. 1 saves every time step, 2 every second step, etc. Negative values request ascii output.
+CFG.surface_format = 1; % Keep the existing OW3D surface-output format used in this project.
 
 setup_mf12_paths();
 
@@ -64,6 +52,8 @@ N_steps = round(CFG.duration_periods * CFG.steps_per_period);
 fprintf('MF12 directional generator\n');
 fprintf('Domain: Lx=%.3f m, Ly=%.3f m, Nx=%d, Ny=%d\n', Lx, Ly, CFG.Nx, CFG.Ny);
 fprintf('Grid: dx=%.3f m, dy=%.3f m\n', dx, dy);
+fprintf('Initial condition time: %.2f Tp relative to focus\n', CFG.t_init_periods);
+fprintf('Total OW3D duration after initialization: %.2f Tp\n', CFG.duration_periods);
 
 kd_list = CFG.kd_list;
 Akp_list = CFG.Akp_list;
@@ -113,7 +103,7 @@ for kd = kd_list
 
                 write_path = fullfile(pwd, CFG.output_dir, ...
                     sprintf('T_init%d_Tp_kd%.1f_spread_%d_heading_%d_Akp_%03d_alpha_%.1f_phi_%d', ...
-                    CFG.t_init_periods, kd, round(CFG.spread_deg), round(CFG.heading_deg), ...
+                    round(CFG.t_init_periods), kd, round(CFG.spread_deg), round(CFG.heading_deg), ...
                     round(Akp * 100), Alpha, phi_shift_deg));
 
                 ensure_dir(write_path);
@@ -240,8 +230,6 @@ function write_ow3d_inp(file_name, CFG, Lx, Ly, h, nx, ny, n_steps, dt)
     end
     cleanup = onCleanup(@() fclose(f));
 
-    [tbeg, tend, tstride] = resolve_plane_window(CFG, n_steps + 1);
-
     fprintf(f, 'Data for MF12 directional wave-group initialization %s <-\n', datestr(now, 0));
     fprintf(f, '-1 2 <-\n');
     fprintf(f, '%d %d %d %d %d %d 0 0 1 1 1 1 <-\n', round(Lx), round(Ly), round(h), nx, ny, 9);
@@ -250,11 +238,7 @@ function write_ow3d_inp(file_name, CFG, Lx, Ly, h, nx, ny, n_steps, dt)
     fprintf(f, '9.81 <-\n');
     fprintf(f, '1 3 0 55 1e-6 1e-6 1 V 1 1 20 <-\n');
     fprintf(f, '0.05 1.00 1.84 2 0 0 1 6 32 <-\n');
-    fprintf(f, '%d %d %d %d <-\n', CFG.store_surface_stride, CFG.i_kinematics, CFG.surface_format, CFG.n_out_files);
-    fprintf(f, '%d %d %d %d %d %d %d %d %d <-\n', ...
-        CFG.plane_xbeg, CFG.plane_xend, CFG.plane_xstride, ...
-        CFG.plane_ybeg, CFG.plane_yend, CFG.plane_ystride, ...
-        tbeg, tend, tstride);
+    fprintf(f, '%d %d <-\n', CFG.store_surface_stride, CFG.surface_format);
     fprintf(f, '1 0 <-\n');
     fprintf(f, '0 6 10 0.08 0.08 0.4 <-\n');
     fprintf(f, '0 8. 3 X 0.0 <-\n');
@@ -280,29 +264,10 @@ function write_readme(file_name, CFG, meta, Akp, Alpha, kd, h, Tp, dx, dy, t_eva
     fprintf(f, 'k-range=[%.6f, %.6f] 1/m\n', meta.kmin, meta.kmax);
     fprintf(f, 'Grid: Nx=%d, Ny=%d, dx=%.6f m, dy=%.6f m\n', CFG.Nx, CFG.Ny, dx, dy);
     fprintf(f, 'Model: MF12 spectral coefficients/order-3, single directional wave group\n');
-    [tbeg, tend, tstride] = resolve_plane_window(CFG, round(CFG.duration_periods * CFG.steps_per_period) + 1);
-    fprintf(f, 'Plane output: x=[%d:%d:%d], y=[%d:%d:%d], t=[%d:%d:%d]\n', ...
-        CFG.plane_xbeg, CFG.plane_xstride, CFG.plane_xend, ...
-        CFG.plane_ybeg, CFG.plane_ystride, CFG.plane_yend, ...
-        tbeg, tstride, tend);
-end
-
-function [tbeg, tend, tstride] = resolve_plane_window(CFG, n_steps_total)
-    switch lower(CFG.time_window_mode)
-        case 'focus_relative_periods'
-            n_focus = round(abs(CFG.t_init_periods) * CFG.steps_per_period) + 1;
-            tbeg = n_focus + round(CFG.focus_window_periods(1) * CFG.steps_per_period);
-            tend = n_focus + round(CFG.focus_window_periods(2) * CFG.steps_per_period);
-        case 'absolute_steps'
-            tbeg = CFG.absolute_step_window(1);
-            tend = CFG.absolute_step_window(2);
-        otherwise
-            error('Unknown time_window_mode: %s', CFG.time_window_mode);
-    end
-
-    tbeg = max(1, min(n_steps_total, round(tbeg)));
-    tend = max(tbeg, min(n_steps_total, round(tend)));
-    tstride = max(1, round(CFG.plane_tstride));
+    fprintf(f, 'Initial condition time relative to focus: %.2f Tp\n', CFG.t_init_periods);
+    fprintf(f, 'Total OW3D duration after initialization: %.2f Tp\n', CFG.duration_periods);
+    fprintf(f, 'Surface output stride: every %d time step(s)\n', abs(CFG.store_surface_stride));
+    fprintf(f, 'Kinematic output: disabled\n');
 end
 
 function save_visualizations(write_path, eta_lin, eta_total, phi_lin, phi_total, Lx, Ly)
