@@ -8,7 +8,7 @@ This repository is currently organized around MF12-based MATLAB tools for prepar
   Generates unidirectional OW3D initial conditions using the bundled MF12 direct interface.
 - `mf12_directional_generator.m`
   Generates directional OW3D initial conditions using the bundled MF12 spectral interface.
-  The current directional workflow is a hybrid test workflow:
+  The current directional workflow is a hybrid test workflow for long pre-focus directional runs:
   - direct MF12 reconstruction up to order 2 for each phase
   - reuse of the phase-0 third-order increment through a `3phi` phase shift for the non-zero phase cases
 - `postprocess_ow3d_boundwaves.m`
@@ -51,7 +51,8 @@ The current OW3D export style is:
 
 - surface output only
 - no kinematic-plane output
-- standard OW3D simulation duration controlled by `t_init_periods` and `duration_periods`
+- directional timing can be configured as a `t_init` sweep with a shared target end time
+- directional focus placement can be shifted automatically in `x` so long pre-focus runs use the domain more efficiently
 
 ## Current Directional Workflow
 
@@ -65,6 +66,15 @@ This was introduced because the validation scripts showed:
 - first-order reuse from phase 0 matches direct recomputation at machine precision
 - third-order increment reuse from phase 0 also matches direct recomputation at machine precision in the tested directional cases
 - second-order reuse is not exact when treated as a single `2phi` object, so second order is still computed directly
+
+The current directional setup in the script is:
+
+- fixed `Tp = 12`
+- fixed `kp = 0.00279`
+- `t_init` sweep `[-40, -30, -20] Tp`
+- shared stop time `t_end = +5 Tp`
+- automatic `x`-focus placement based on the simulated pre-/post-focus time window, with a small edge padding
+- output root `directional initial condition/error_wave_separation`
 
 ## Typical Usage
 
@@ -86,7 +96,8 @@ run('validate_fourphase_from_phase0_components.m');
 
 - `Lx_lambda` and `Ly_lambda` control physical domain size in peak wavelengths.
 - `Nx` and `Ny` control spatial resolution only.
-- `store_surface_stride` controls OW3D surface-output frequency.
+- `store_surface_stride` controls OW3D surface-output frequency and the directional generator now defaults to `4`.
+- the directional generator now uses a fixed user-specified `Tp` for timing instead of recomputing it from `kp` and `kd`
 - The current directional output root may be a temporary test directory, depending on the configuration block at the top of the script.
 
 ## Development Log
@@ -109,3 +120,7 @@ run('validate_fourphase_from_phase0_components.m');
   Added OW3D postprocessing and four-phase validation utilities.
 - 2026-03-13
   Updated the directional generator to the hybrid workflow: direct order<=2, phase-0 reuse for the third-order increment.
+- 2026-03-15
+  Reworked the directional batch for error-wave separation studies with `t_init = [-40, -30, -20] Tp`, a common `t_end = 5 Tp`, and default surface stride `4`.
+- 2026-03-15
+  Switched the directional timing to fixed `Tp = 12`, updated the default `kp` to `0.00279`, and added automatic focus placement to reduce wasted domain length in long pre-focus runs.

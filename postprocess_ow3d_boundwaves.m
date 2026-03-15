@@ -10,8 +10,8 @@ close all;
 CFG = struct();
 
 % -------------------- User configuration --------------------
-CFG.data_root = fullfile(pwd, 'directional initial condition', 'test_generator');
-CFG.folder_pattern = 'T_init-10_Tp_kd1.0_spread_15_heading_0_Akp_012_alpha_8.0_phi_%d';
+CFG.data_root = fullfile(pwd, 'directional initial condition', 'error_wave_separation');
+CFG.folder_pattern = 'T_init-40_Tend5_Tp_kd1.0_spread_15_heading_0_Akp_012_alpha_8.0_phi_%d';
 CFG.phi_shifts_deg = 0:90:270;
 CFG.time_step = 300; % EP index, e.g. 300 -> EP_00300.bin
 CFG.lambda = 225;

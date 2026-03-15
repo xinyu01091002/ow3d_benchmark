@@ -1,0 +1,27 @@
+Directional OW3D initial-condition batch
+Updated: 16-Mar-2026 01:11:20
+
+Purpose
+Generate directional OW3D cases to measure how quickly the error wave separates from the main wave group.
+
+What this batch is trying to verify
+- Each case starts from an early MF12 initialization time and is marched to a common end time of +5Tp relative to focus.
+- The t_init sweep is intended to show when the error wave becomes clearly separated from the dominant wave group.
+- Each subdirectory is a runnable OW3D case and is named so different start times remain easy to compare during postprocessing.
+
+Current workflow
+- Direct MF12 reconstruction up to order 2 for each requested phase.
+- Reuse the phase=0 third-order increment by applying a 3phi shift for the non-zero phase cases.
+- Surface-only OW3D output; no kinematic export.
+- One subdirectory per generated case.
+
+Current settings snapshot
+- output directory = directional initial condition/error_wave_separation
+- phases = [0, 90, 180, 270] deg
+- heading = 0.0 deg
+- spread = 15.0 deg
+- t_init sweep = [-40] Tp
+- target end time = 5.00 Tp
+- domain = [9008.151, 3378.057] m
+- grid = [1025, 257], dx = 8.788 m, dy = 13.144 m
+- surface stride = 4
