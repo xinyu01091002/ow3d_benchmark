@@ -18,7 +18,7 @@ CFG.lambda = 225;
 CFG.section_mode = 'centerline'; % 'centerline', 'index', or 'y_value'
 CFG.section_index = [];
 CFG.section_y_value = 0.0;
-CFG.save_mat = true;
+CFG.save_mat = false;
 CFG.output_dir = fullfile(pwd, 'processed_boundwaves');
 
 % -------------------- Load four OW3D phase snapshots --------------------
@@ -97,74 +97,56 @@ end
 x_plot = X(:,1) - 0.5 * (X(1,1) + X(end,1));
 y_plot = Y(1,:) - 0.5 * (Y(1,1) + Y(1,end));
 section_idx = resolve_section_index(CFG, y_plot, size(eta1, 2));
+eta_nonlinear = eta1 + eta2 + eta3;
+envelope_peak_by_y = peak_envelope_along_x(eta_nonlinear);
+[off_section_idx, off_section_peak] = resolve_half_height_off_section(y_plot, envelope_peak_by_y, section_idx);
+fields_to_plot = {eta1, eta2, eta3, eta_nonlinear};
+titles_center = { ...
+    sprintf('(a) First-order elevation, centerline ($y = %.2f$ m)', y_plot(section_idx)), ...
+    sprintf('(b) Second-order elevation, centerline ($y = %.2f$ m)', y_plot(section_idx)), ...
+    sprintf('(c) Third-order elevation, centerline ($y = %.2f$ m)', y_plot(section_idx)), ...
+    sprintf('(d) Nonlinear elevation, centerline ($y = %.2f$ m)', y_plot(section_idx))};
+titles_off = { ...
+    sprintf('(a) First-order elevation, off-centerline ($y = %.2f$ m)', y_plot(off_section_idx)), ...
+    sprintf('(b) Second-order elevation, off-centerline ($y = %.2f$ m)', y_plot(off_section_idx)), ...
+    sprintf('(c) Third-order elevation, off-centerline ($y = %.2f$ m)', y_plot(off_section_idx)), ...
+    sprintf('(d) Nonlinear elevation, off-centerline ($y = %.2f$ m)', y_plot(off_section_idx))};
+line_colors = [0.10 0.10 0.10; 0.80 0.26 0.18; 0.12 0.39 0.71; 0.55 0.16 0.51];
+y_limits = compute_shared_ylimits(fields_to_plot, [section_idx, off_section_idx]);
 
-fig = figure('Color', 'w', 'Position', [120 100 1500 900]);
-tiledlayout(2, 3, 'Padding', 'compact', 'TileSpacing', 'compact');
+fig_center = create_publishable_figure([120 100 1450 880]);
+tile_center = tiledlayout(fig_center, 2, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
+title(tile_center, sprintf('OW3D bound-wave decomposition at the centerline ($t_{\\mathrm{EP}} = %d$)', CFG.time_step), ...
+    'Interpreter', 'latex', 'FontSize', 16, 'FontWeight', 'bold');
 
-nexttile;
-imagesc(x_plot, y_plot, eta1');
-axis image;
-set(gca, 'YDir', 'normal');
-colorbar;
-title('First-order component \eta_1');
-xlabel('x (m)');
-ylabel('y (m)');
+for i = 1:4
+    ax = nexttile(tile_center);
+    draw_wave_panel(ax, x_plot, fields_to_plot{i}(:, section_idx), line_colors(i,:), titles_center{i}, y_limits(i,:));
+end
 
-nexttile;
-imagesc(x_plot, y_plot, eta2');
-axis image;
-set(gca, 'YDir', 'normal');
-colorbar;
-title('Second-order bound wave \eta_2');
-xlabel('x (m)');
-ylabel('y (m)');
+annotation(fig_center, 'textbox', [0.13 0.01 0.8 0.04], ...
+    'String', sprintf('Centerline defined by $y = %.2f$ m.', y_plot(section_idx)), ...
+    'Interpreter', 'latex', 'EdgeColor', 'none', 'HorizontalAlignment', 'left', ...
+    'FontName', 'Times New Roman', 'FontSize', 11);
 
-nexttile;
-imagesc(x_plot, y_plot, eta3');
-axis image;
-set(gca, 'YDir', 'normal');
-colorbar;
-title('Third-order bound wave \eta_3');
-xlabel('x (m)');
-ylabel('y (m)');
+fig_off = create_publishable_figure([150 130 1450 880]);
+tile_off = tiledlayout(fig_off, 2, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
+title(tile_off, sprintf('OW3D bound-wave decomposition at the half-envelope off-centerline ($t_{\\mathrm{EP}} = %d$)', CFG.time_step), ...
+    'Interpreter', 'latex', 'FontSize', 16, 'FontWeight', 'bold');
 
-nexttile;
-plot(x_plot, eta1(:, section_idx), 'k-', 'LineWidth', 1.4, 'DisplayName', '\eta_1');
-hold on;
-plot(x_plot, eta2(:, section_idx), 'r-', 'LineWidth', 1.4, 'DisplayName', '\eta_2');
-plot(x_plot, eta3(:, section_idx), 'b--', 'LineWidth', 1.4, 'DisplayName', '\eta_3');
-hold off;
-grid on;
-box on;
-legend('Location', 'best');
-title(sprintf('Surface elevation section (index %d)', section_idx));
-xlabel('x (m)');
-ylabel('\eta (m)');
+for i = 1:4
+    ax = nexttile(tile_off);
+    draw_wave_panel(ax, x_plot, fields_to_plot{i}(:, off_section_idx), line_colors(i,:), titles_off{i}, y_limits(i,:));
+end
 
-nexttile;
-plot(x_plot, phi1(:, section_idx), 'k-', 'LineWidth', 1.4, 'DisplayName', '\phi_1');
-hold on;
-plot(x_plot, phi2(:, section_idx), 'r-', 'LineWidth', 1.4, 'DisplayName', '\phi_2');
-plot(x_plot, phi3(:, section_idx), 'b--', 'LineWidth', 1.4, 'DisplayName', '\phi_3');
-hold off;
-grid on;
-box on;
-legend('Location', 'best');
-title(sprintf('Surface potential section (index %d)', section_idx));
-xlabel('x (m)');
-ylabel('\phi_s (m^2/s)');
+annotation(fig_off, 'textbox', [0.13 0.01 0.82 0.04], ...
+    'String', sprintf('Off-centerline selected from the nonlinear envelope criterion: $y = %.2f$ m, peak envelope = %.3f m.', ...
+    y_plot(off_section_idx), off_section_peak), ...
+    'Interpreter', 'latex', 'EdgeColor', 'none', 'HorizontalAlignment', 'left', ...
+    'FontName', 'Times New Roman', 'FontSize', 11);
 
-nexttile;
-plot(x_plot, eta1(:, section_idx) + eta2(:, section_idx) + eta3(:, section_idx), ...
-    'm-', 'LineWidth', 1.6, 'DisplayName', '\eta_1+\eta_2+\eta_3');
-grid on;
-box on;
-legend('Location', 'best');
-title('Reconstructed bound-wave sum');
-xlabel('x (m)');
-ylabel('\eta (m)');
-
-exportgraphics(fig, fullfile(CFG.output_dir, sprintf('OW3D_boundwaves_t%05d.png', CFG.time_step)), 'Resolution', 220);
+exportgraphics(fig_center, fullfile(CFG.output_dir, sprintf('OW3D_boundwaves_centerline_t%05d.png', CFG.time_step)), 'Resolution', 300);
+exportgraphics(fig_off, fullfile(CFG.output_dir, sprintf('OW3D_boundwaves_offcenterline_t%05d.png', CFG.time_step)), 'Resolution', 300);
 
 disp('OW3D bound-wave postprocessing complete.');
 
@@ -266,5 +248,74 @@ function section_idx = resolve_section_index(CFG, y_vec, ny)
             [~, section_idx] = min(abs(y_vec - CFG.section_y_value));
         otherwise
             error('Unsupported section_mode: %s', CFG.section_mode);
+    end
+end
+
+function peak_env = peak_envelope_along_x(field_in)
+    [nx, ny] = size(field_in);
+    peak_env = zeros(1, ny);
+
+    for j = 1:ny
+        signal = field_in(:, j);
+        analytic_signal = hilbert(signal);
+        peak_env(j) = max(abs(analytic_signal(1:nx)));
+    end
+end
+
+function [section_idx, section_peak] = resolve_half_height_off_section(y_vec, peak_env, center_idx)
+    target_peak = 0.5 * max(peak_env);
+    candidate_mask = y_vec > y_vec(center_idx);
+
+    if ~any(candidate_mask)
+        candidate_mask = true(size(y_vec));
+        candidate_mask(center_idx) = false;
+    end
+
+    candidate_idx = find(candidate_mask);
+    [~, best_local] = min(abs(peak_env(candidate_idx) - target_peak));
+    section_idx = candidate_idx(best_local);
+    section_peak = peak_env(section_idx);
+end
+
+function fig = create_publishable_figure(fig_position)
+    fig = figure('Color', 'w', 'Position', fig_position, 'Renderer', 'painters');
+end
+
+function draw_wave_panel(ax, x_plot, y_plot, line_color, panel_title, y_limits)
+    plot(ax, x_plot, y_plot, 'Color', line_color, 'LineWidth', 1.8);
+    hold(ax, 'on');
+    yline(ax, 0, '-', 'Color', [0.45 0.45 0.45], 'LineWidth', 0.9);
+    hold(ax, 'off');
+    grid(ax, 'on');
+    box(ax, 'on');
+    ax.LineWidth = 1.0;
+    ax.FontName = 'Times New Roman';
+    ax.FontSize = 12;
+    ax.TickDir = 'out';
+    ax.TickLength = [0.012 0.012];
+    ax.XMinorGrid = 'off';
+    ax.YMinorGrid = 'off';
+    ax.GridAlpha = 0.14;
+    ax.GridColor = [0 0 0];
+    ax.Layer = 'top';
+    xlim(ax, [x_plot(1), x_plot(end)]);
+    ylim(ax, y_limits);
+    xlabel(ax, '$x$ (m)', 'Interpreter', 'latex', 'FontSize', 13);
+    ylabel(ax, '$\eta$ (m)', 'Interpreter', 'latex', 'FontSize', 13);
+    title(ax, panel_title, 'Interpreter', 'latex', 'FontSize', 13, 'FontWeight', 'normal');
+end
+
+function y_limits = compute_shared_ylimits(fields_to_plot, section_indices)
+    n_fields = numel(fields_to_plot);
+    y_limits = zeros(n_fields, 2);
+
+    for i = 1:n_fields
+        values = fields_to_plot{i}(:, section_indices);
+        y_abs_max = max(abs(values(:)));
+        if y_abs_max == 0
+            y_abs_max = 1;
+        end
+        padding = 0.08 * y_abs_max;
+        y_limits(i,:) = [-y_abs_max - padding, y_abs_max + padding];
     end
 end
