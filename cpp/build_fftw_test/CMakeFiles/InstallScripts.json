@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Research/OW3D_benchmark/cpp/build_fftw_test/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

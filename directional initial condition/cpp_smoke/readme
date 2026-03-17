@@ -1,0 +1,19 @@
+Directional OW3D initial-condition batch
+Updated: 17-Mar-2026 17:31:37
+
+Purpose
+Standalone C++ directional OW3D generation batch using the MF12 spectral implementation.
+
+Workflow
+- Full direct spectral reconstruction for each requested phase.
+- Surface-only OW3D export.
+- Quick-look visualization and field CSV dumps enabled by default.
+
+Current settings snapshot
+- output directory = directional initial condition/cpp_smoke
+- phases = [0] deg
+- heading = 0 deg
+- spread = 45 deg
+- domain = [10134.2, 4504.08] m
+- grid = [1025, 513], dx = 9.88699 m, dy = 8.77987 m
+- surface stride = 1

@@ -1,0 +1,18 @@
+{
+  "physics": {"g": 9.81, "kp": 0.0279, "Tp": 12.0, "kd_list": [1.0]},
+  "nonlinear": {"order": 3, "subharmonic_mode": "auto"},
+  "spectrum": {
+    "preset": "semi_gaussian_directional",
+    "Akp_list": [0.06],
+    "Alpha_list": [8.0],
+    "phases_deg": [0.0, 90.0, 180.0, 270.0],
+    "heading_deg": 0.0,
+    "spread_deg": 15.0,
+    "energy_keep_frac": 0.99,
+    "max_components": 24
+  },
+  "domain": {"Lx_lambda": 5.0, "Ly_lambda": 3.0, "Nx": 65, "Ny": 33},
+  "timing": {"t_focus": 0.0, "t_init_periods_list": [-2.0], "t_end_periods": 1.0, "steps_per_period": 12, "focus_edge_padding_fraction": 0.05},
+  "output": {"output_root": "directional initial condition/cpp_smoke_fourphase", "store_surface_stride": 1, "surface_format": 1},
+  "visualization": {"enabled": false, "write_linear_field": true, "write_nonlinear_field": true, "write_surface_style": false, "centerline_section": "mid", "format": "png", "width": 900, "height": 700}
+}

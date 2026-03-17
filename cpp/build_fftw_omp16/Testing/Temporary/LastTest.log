@@ -1,0 +1,18 @@
+Start testing: Mar 17 16:49 GMT ????
+----------------------------------------------------------
+1/1 Testing: ow3d_directional_tests
+1/1 Test: ow3d_directional_tests
+Command: "C:/Research/OW3D_benchmark/cpp/build_fftw_omp16/ow3d_directional_tests.exe"
+Directory: C:/Research/OW3D_benchmark/cpp/build_fftw_omp16
+"ow3d_directional_tests" start time: Mar 17 16:49 GMT ????
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.09 sec
+----------------------------------------------------------
+Test Passed.
+"ow3d_directional_tests" end time: Mar 17 16:49 GMT ????
+"ow3d_directional_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Mar 17 16:49 GMT ????

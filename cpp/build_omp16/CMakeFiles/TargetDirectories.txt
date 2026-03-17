@@ -1,0 +1,6 @@
+C:/Research/OW3D_benchmark/cpp/build_omp16/CMakeFiles/ow3d_directional_lib.dir
+C:/Research/OW3D_benchmark/cpp/build_omp16/CMakeFiles/ow3d_directional_generator.dir
+C:/Research/OW3D_benchmark/cpp/build_omp16/CMakeFiles/ow3d_directional_tests.dir
+C:/Research/OW3D_benchmark/cpp/build_omp16/CMakeFiles/test.dir
+C:/Research/OW3D_benchmark/cpp/build_omp16/CMakeFiles/edit_cache.dir
+C:/Research/OW3D_benchmark/cpp/build_omp16/CMakeFiles/rebuild_cache.dir

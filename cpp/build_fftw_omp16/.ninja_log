@@ -1,0 +1,19 @@
+# ninja log v7
+32	2516	7954678339945289	CMakeFiles/ow3d_directional_lib.dir/src/mf12_compare.cpp.obj	3d8778ca95591e55
+96	2702	7954693143965287	CMakeFiles/ow3d_directional_lib.dir/src/verification.cpp.obj	23fed38154b221d3
+34	2427	7954693143340148	CMakeFiles/ow3d_directional_lib.dir/src/mf12_runner.cpp.obj	ec716637bbcff292
+46	2653	7954693143470257	CMakeFiles/ow3d_directional_lib.dir/src/ow3d_export.cpp.obj	bb6d766c8421844f
+191	2612	7954693144912345	CMakeFiles/ow3d_directional_tests.dir/tests/test_main.cpp.obj	53226277888c6f88
+157	2717	7954693144572392	CMakeFiles/ow3d_directional_generator.dir/src/main.cpp.obj	6c2443c0a35f7e9e
+76	2622	7954693143760252	CMakeFiles/ow3d_directional_lib.dir/src/spectrum.cpp.obj	46e9aa65bf18d0eb
+121	2774	7954693144215352	CMakeFiles/ow3d_directional_lib.dir/src/visualization.cpp.obj	86a8878a6bc29811
+43	1842	7954689480152957	CMakeFiles/ow3d_directional_lib.dir/src/mf12_spectral.cpp.obj	eb73f5ae0fdfeb1e
+22	4515	7954678339845272	CMakeFiles/ow3d_directional_lib.dir/src/mf12_case_io.cpp.obj	3e496045e7d4ef15
+12	4902	7954693143121760	CMakeFiles/ow3d_directional_lib.dir/src/config.cpp.obj	ad8eaad2d3e97bf6
+4902	5388	7954693192027650	libow3d_directional_lib.a	bfddc87b845ddc69
+5401	5825	7954693197015773	ow3d_directional_tests.exe	45b54cfb79b836d7
+5389	6130	7954693196885785	ow3d_directional_generator.exe	2ee1640e91bb30e2
+35	410	7954719794963334	build.ninja	10fd35e9f8173c6
+35	410	7954719794902687	C:/Research/OW3D_benchmark/cpp/build_fftw_omp16/cmake_install.cmake	10fd35e9f8173c6
+35	410	7954719794923278	C:/Research/OW3D_benchmark/cpp/build_fftw_omp16/CTestTestfile.cmake	10fd35e9f8173c6
+22	2758	7954693143221790	CMakeFiles/ow3d_directional_lib.dir/src/four_phase.cpp.obj	39b26b00e4083ae5

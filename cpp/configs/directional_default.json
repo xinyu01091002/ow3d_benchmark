@@ -1,0 +1,50 @@
+{
+  "physics": {
+    "g": 9.81,
+    "kp": 0.00279,
+    "Tp": 12.0,
+    "kd_list": [1.0]
+  },
+  "nonlinear": {
+    "order": 3,
+    "subharmonic_mode": "auto"
+  },
+  "spectrum": {
+    "preset": "semi_gaussian_directional",
+    "Akp_list": [0.12],
+    "Alpha_list": [8.0],
+    "phases_deg": [0.0, 90.0, 180.0, 270.0],
+    "heading_deg": 0.0,
+    "spread_deg": 25.0,
+    "energy_keep_frac": 0.999,
+    "max_components": 1800
+  },
+  "domain": {
+    "Lx_lambda": 40.0,
+    "Ly_lambda": 15.0,
+    "Nx": 1025,
+    "Ny": 257
+  },
+  "timing": {
+    "t_focus": 0.0,
+    "t_init_periods_list": [-40.0, -30.0, -20.0],
+    "t_end_periods": 5.0,
+    "steps_per_period": 30,
+    "focus_edge_padding_fraction": 0.05
+  },
+  "output": {
+    "output_root": "directional initial condition/cpp_generator",
+    "store_surface_stride": 4,
+    "surface_format": 1
+  },
+  "visualization": {
+    "enabled": true,
+    "write_linear_field": true,
+    "write_nonlinear_field": true,
+    "write_surface_style": true,
+    "centerline_section": "mid",
+    "format": "png",
+    "width": 1400,
+    "height": 900
+  }
+}

@@ -18,6 +18,17 @@ This repository is currently organized around MF12-based MATLAB tools for prepar
 - `validate_phase_shift_from_single_run.m`
   Earlier validation sandbox kept for comparison with the newer component-based test.
 
+## C++ Generator
+
+- `cpp/`
+  Standalone C++ directional OW3D generator using the validated MF12 spectral implementation as the nonlinear core.
+  The first C++ milestone uses full direct spectral reconstruction for each phase and writes:
+  - `OceanWave3D.init`
+  - `OceanWave3D.inp`
+  - `OW_readme.txt`
+  - quick-look PNG visualizations
+  - CSV dumps of the generated fields
+
 ## Repository Contents
 
 Core dependency:
