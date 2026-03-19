@@ -1,2 +1,11 @@
 cpp/build/
 cpp/build_verify/
+
+# OW3D large binary outputs
+Kinematics*.bin
+EP_*.bin
+*.zip
+
+# Generated postprocessing outputs
+processed_boundkinematics/
+processed_boundwaves/

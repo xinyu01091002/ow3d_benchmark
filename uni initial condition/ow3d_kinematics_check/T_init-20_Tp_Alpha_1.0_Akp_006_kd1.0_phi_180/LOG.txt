@@ -1,0 +1,1152 @@
+
+*********************************************************
+***                                                   ***
+*** OceanWave3D - a coastal engineering tool for      ***
+*** simulation of nonlinear free surface waves.       ***
+*** Copyright (C) 2009 Allan P. Engsig-Karup.         ***
+***                                                   ***
+*** This OceanWave3D program comes with ABSOLUTELY NO ***
+*** WARRANTY. It is distributed under the conditions  ***
+*** of the GNU General Public License version 3.      ***
+***                                                   ***
+***     Software library developed in 2009 by         ***
+***                                                   ***
+***     Allan P. Engsig-Karup                         ***
+***                                                   ***
+*** At DTU Informatics                                ***
+***    Scientific Computing Section                   ***
+***    Technical University of Denmark                ***
+***                                                   ***
+***     Original software library written in 2007 by  ***
+***                                                   ***
+***     Allan P. Engsig-Karup                         ***
+***                                                   ***
+***     under supervision of                          ***
+***     Harry B. Bingham                              ***
+***                                                   ***
+*** At Department of Mechanical Engineering           ***
+***    Coastal, Maritime and Structural Eng. Section  ***
+***    Technical University of Denmark                ***
+***                                                   ***
+*********************************************************
+
+   Input file with model parameters : OceanWave3D.inp                         
+
+   Header title.................... : Generated 19-Mar-2026 02:10:37 <-                                       
+
+   Bathymetry                         : Predefined (in setup for IC)
+   Size of dx: .3739E+01
+
+   The problem is without a y-dimension.
+
+   Uneven node-distribution in Z
+   Ghost point layer included below bottom.
+
+ INPUT:  Initial conditions will be read from OceanWave3D.init with header
+  H=0.957404 nx=4097 ny=1 dx=3.738735 dy=10.000000 akp=0.060000 shift=1.0
+  
+   Half-width stencils: (alpha,beta,gamma)=( 3, 0, 3)
+   Half-width stencils: (alpha,beta,gamma)=
+      ( 1, 0, 1) (Preconditioner)
+ Starting time for this run is   0.45873320000000001     
+   Number of time steps chosen:     1801
+   Size of time increment: .4587E+00
+    Time-integration method: Classical Runge-Kutta fourth order
+     - Optimization of RK scheme using extrapolation on seperate RK stages will be employed.
+   ** No input value for rho, using 1000.
+    GMRES method is chosen.
+    Strategy: GMRES + MG-RB-V(           1 ,           1 )
+    Tolerance levels user-defined. RelTol =    9.9999999999999995E-007  and AbsTol =    9.9999999999999995E-007
+ 
+ Kinematics output requested in            1  file(s) named "Kinematics_**.bin".
+  
+   Fully nonlinear model is employed.
+
+ No free-surface pressure term is being applied.  
+
+  
+ No breaking model line found, the feature is off.
+  
+  
+ Found            0  pressure damping zones.
+   Standard Cartesian model employed.
+
+ Initializing variables and arrays.
+ setup ICs...
+ IC chosen is case           -1
+ Reading the initial conditions. ** Not implemented curvilinear! **
+ done with ICs
+ Building stencils...
+   Preconditioning matrix generated.
+ Building stencils...
+   Preconditioning matrix generated.
+ Building stencils...
+   Preconditioning matrix generated.
+ Building stencils...
+   Preconditioning matrix generated.
+ Building stencils...
+   Preconditioning matrix generated.
+ Building stencils...
+   Preconditioning matrix generated.
+ Building stencils...
+   Preconditioning matrix generated.
+ Building stencils...
+   Preconditioning matrix generated.
+ Building stencils...
+   Preconditioning matrix generated.
+ Building stencils...
+   Preconditioning matrix generated.
+ Building stencils...
+   Preconditioning matrix generated.
+ Building stencils...
+   Preconditioning matrix generated.
+
+  Factorization of preconditioner:
+      Real workspace for LU factors:  MAXS =          224
+     Size of real space used to store the LU factors =    122
+     Size of integer space used to store the LU factors =     98
+     Number of off-diagonal pivots =      0
+
+ Determine finite difference stencils for the system matrix...
+ Building stencils...
+ ...done!
+   Starting to time step.
+ A total of      165 GMRES iterations done.
+ A total of       82 GMRES iterations done in first time step.
+ An average of    41.25 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+ A total of      248 GMRES iterations done.
+ A total of       82 GMRES iterations done in first time step.
+ An average of    31.00 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+ An average of    41.50 GMRES iterations done per solve excluding first time step iteration counts.
+   Minimum no.       20 and maximum no.       21 iterations per solve excluding first time step solves
+ A total of      331 GMRES iterations done.
+ A total of       82 GMRES iterations done in first time step.
+ An average of    27.58 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+ An average of    31.12 GMRES iterations done per solve excluding first time step iteration counts.
+   Minimum no.       20 and maximum no.       21 iterations per solve excluding first time step solves
+ A total of      414 GMRES iterations done.
+ A total of       82 GMRES iterations done in first time step.
+ An average of    25.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+ An average of    27.67 GMRES iterations done per solve excluding first time step iteration counts.
+   Minimum no.       20 and maximum no.       21 iterations per solve excluding first time step solves
+ A total of      497 GMRES iterations done.
+ A total of       82 GMRES iterations done in first time step.
+ An average of    24.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+ An average of    25.94 GMRES iterations done per solve excluding first time step iteration counts.
+   Minimum no.       20 and maximum no.       21 iterations per solve excluding first time step solves
+ A total of      580 GMRES iterations done.
+ A total of       82 GMRES iterations done in first time step.
+ An average of    24.17 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+ An average of    24.90 GMRES iterations done per solve excluding first time step iteration counts.
+   Minimum no.       20 and maximum no.       21 iterations per solve excluding first time step solves
+ A total of      663 GMRES iterations done.
+ A total of       82 GMRES iterations done in first time step.
+ An average of    23.68 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+ An average of    24.21 GMRES iterations done per solve excluding first time step iteration counts.
+   Minimum no.       20 and maximum no.       21 iterations per solve excluding first time step solves
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+ A total of      746 GMRES iterations done.
+ A total of       82 GMRES iterations done in first time step.
+ An average of    23.31 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+ An average of    23.71 GMRES iterations done per solve excluding first time step iteration counts.
+   Minimum no.       20 and maximum no.       21 iterations per solve excluding first time step solves
+   Loop no.       10   Time =    5.0461 sec.
+ An average of    23.03 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.       20   Time =    9.6334 sec.
+ An average of    21.83 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.       30   Time =   14.2207 sec.
+ An average of    21.46 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.       40   Time =   18.8081 sec.
+ An average of    21.28 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.       50   Time =   23.3954 sec.
+ An average of    21.17 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.       60   Time =   27.9827 sec.
+ An average of    21.10 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.       70   Time =   32.5700 sec.
+ An average of    21.05 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.       80   Time =   37.1574 sec.
+ An average of    21.01 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.       90   Time =   41.7447 sec.
+ An average of    20.98 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      100   Time =   46.3320 sec.
+ An average of    20.96 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      110   Time =   50.9194 sec.
+ An average of    20.94 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      120   Time =   55.5067 sec.
+ An average of    20.92 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      130   Time =   60.0940 sec.
+ An average of    20.91 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      140   Time =   64.6814 sec.
+ An average of    20.90 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      150   Time =   69.2687 sec.
+ An average of    20.89 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      160   Time =   73.8560 sec.
+ An average of    20.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      170   Time =   78.4433 sec.
+ An average of    20.87 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      180   Time =   83.0307 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      190   Time =   87.6180 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      200   Time =   92.2053 sec.
+ An average of    20.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      210   Time =   96.7927 sec.
+ An average of    20.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      220   Time =  101.3800 sec.
+ An average of    20.84 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      230   Time =  105.9673 sec.
+ An average of    20.84 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      240   Time =  110.5547 sec.
+ An average of    20.84 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      250   Time =  115.1420 sec.
+ An average of    20.83 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      260   Time =  119.7293 sec.
+ An average of    20.83 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      270   Time =  124.3166 sec.
+ An average of    20.83 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      280   Time =  128.9040 sec.
+ An average of    20.82 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      290   Time =  133.4913 sec.
+ An average of    20.82 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      300   Time =  138.0786 sec.
+ An average of    20.82 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      310   Time =  142.6660 sec.
+ An average of    20.82 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      320   Time =  147.2533 sec.
+ An average of    20.81 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      330   Time =  151.8406 sec.
+ An average of    20.81 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      340   Time =  156.4280 sec.
+ An average of    20.81 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      350   Time =  161.0153 sec.
+ An average of    20.81 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      360   Time =  165.6026 sec.
+ An average of    20.81 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      370   Time =  170.1899 sec.
+ An average of    20.81 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      380   Time =  174.7773 sec.
+ An average of    20.80 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      390   Time =  179.3646 sec.
+ An average of    20.80 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      400   Time =  183.9519 sec.
+ An average of    20.80 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      410   Time =  188.5393 sec.
+ An average of    20.80 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       21 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      420   Time =  193.1266 sec.
+ An average of    20.80 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      430   Time =  197.7139 sec.
+ An average of    20.80 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      440   Time =  202.3013 sec.
+ An average of    20.80 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      450   Time =  206.8886 sec.
+ An average of    20.80 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      460   Time =  211.4759 sec.
+ An average of    20.80 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      470   Time =  216.0632 sec.
+ An average of    20.81 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      480   Time =  220.6506 sec.
+ An average of    20.81 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      490   Time =  225.2379 sec.
+ An average of    20.82 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      500   Time =  229.8252 sec.
+ An average of    20.83 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      510   Time =  234.4126 sec.
+ An average of    20.84 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      520   Time =  238.9999 sec.
+ An average of    20.84 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      530   Time =  243.5872 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      540   Time =  248.1746 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      550   Time =  252.7619 sec.
+ An average of    20.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      560   Time =  257.3492 sec.
+ An average of    20.89 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      570   Time =  261.9365 sec.
+ An average of    20.90 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      580   Time =  266.5239 sec.
+ An average of    20.91 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      590   Time =  271.1112 sec.
+ An average of    20.92 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      600   Time =  275.6985 sec.
+ An average of    20.93 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      610   Time =  280.2859 sec.
+ An average of    20.94 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      620   Time =  284.8732 sec.
+ An average of    20.94 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      630   Time =  289.4605 sec.
+ An average of    20.95 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      640   Time =  294.0479 sec.
+ An average of    20.96 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      650   Time =  298.6352 sec.
+ An average of    20.97 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      660   Time =  303.2225 sec.
+ An average of    20.98 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      670   Time =  307.8098 sec.
+ An average of    20.99 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      680   Time =  312.3972 sec.
+ An average of    20.99 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      690   Time =  316.9845 sec.
+ An average of    20.99 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      700   Time =  321.5718 sec.
+ An average of    20.99 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      710   Time =  326.1592 sec.
+ An average of    21.00 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      720   Time =  330.7465 sec.
+ An average of    21.00 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      730   Time =  335.3338 sec.
+ An average of    21.00 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      740   Time =  339.9212 sec.
+ An average of    21.00 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      750   Time =  344.5085 sec.
+ An average of    21.00 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      760   Time =  349.0958 sec.
+ An average of    20.99 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      770   Time =  353.6831 sec.
+ An average of    20.99 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      780   Time =  358.2705 sec.
+ An average of    20.99 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      790   Time =  362.8578 sec.
+ An average of    20.99 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      800   Time =  367.4451 sec.
+ An average of    20.98 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      810   Time =  372.0325 sec.
+ An average of    20.98 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      820   Time =  376.6198 sec.
+ An average of    20.98 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      830   Time =  381.2071 sec.
+ An average of    20.98 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      840   Time =  385.7945 sec.
+ An average of    20.97 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      850   Time =  390.3818 sec.
+ An average of    20.97 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      860   Time =  394.9691 sec.
+ An average of    20.97 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      870   Time =  399.5564 sec.
+ An average of    20.97 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      880   Time =  404.1438 sec.
+ An average of    20.96 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      890   Time =  408.7311 sec.
+ An average of    20.96 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      900   Time =  413.3184 sec.
+ An average of    20.96 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      910   Time =  417.9058 sec.
+ An average of    20.96 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      920   Time =  422.4931 sec.
+ An average of    20.95 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      930   Time =  427.0804 sec.
+ An average of    20.95 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      940   Time =  431.6678 sec.
+ An average of    20.95 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      950   Time =  436.2551 sec.
+ An average of    20.95 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      960   Time =  440.8424 sec.
+ An average of    20.94 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      970   Time =  445.4297 sec.
+ An average of    20.94 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      980   Time =  450.0171 sec.
+ An average of    20.94 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.      990   Time =  454.6044 sec.
+ An average of    20.94 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1000   Time =  459.1917 sec.
+ An average of    20.94 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1010   Time =  463.7791 sec.
+ An average of    20.94 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1020   Time =  468.3664 sec.
+ An average of    20.93 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1030   Time =  472.9537 sec.
+ An average of    20.93 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1040   Time =  477.5411 sec.
+ An average of    20.93 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1050   Time =  482.1284 sec.
+ An average of    20.93 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1060   Time =  486.7157 sec.
+ An average of    20.93 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1070   Time =  491.3030 sec.
+ An average of    20.92 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1080   Time =  495.8904 sec.
+ An average of    20.92 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1090   Time =  500.4777 sec.
+ An average of    20.92 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1100   Time =  505.0650 sec.
+ An average of    20.92 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1110   Time =  509.6524 sec.
+ An average of    20.92 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1120   Time =  514.2397 sec.
+ An average of    20.92 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1130   Time =  518.8270 sec.
+ An average of    20.92 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1140   Time =  523.4144 sec.
+ An average of    20.91 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1150   Time =  528.0017 sec.
+ An average of    20.91 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1160   Time =  532.5890 sec.
+ An average of    20.91 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1170   Time =  537.1763 sec.
+ An average of    20.91 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1180   Time =  541.7637 sec.
+ An average of    20.91 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1190   Time =  546.3510 sec.
+ An average of    20.91 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1200   Time =  550.9383 sec.
+ An average of    20.91 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1210   Time =  555.5257 sec.
+ An average of    20.90 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1220   Time =  560.1130 sec.
+ An average of    20.90 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1230   Time =  564.7003 sec.
+ An average of    20.90 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1240   Time =  569.2877 sec.
+ An average of    20.90 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1250   Time =  573.8750 sec.
+ An average of    20.90 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1260   Time =  578.4623 sec.
+ An average of    20.90 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1270   Time =  583.0496 sec.
+ An average of    20.90 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1280   Time =  587.6370 sec.
+ An average of    20.90 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1290   Time =  592.2243 sec.
+ An average of    20.90 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1300   Time =  596.8116 sec.
+ An average of    20.89 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1310   Time =  601.3990 sec.
+ An average of    20.89 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1320   Time =  605.9863 sec.
+ An average of    20.89 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1330   Time =  610.5736 sec.
+ An average of    20.89 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1340   Time =  615.1610 sec.
+ An average of    20.89 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1350   Time =  619.7483 sec.
+ An average of    20.89 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1360   Time =  624.3356 sec.
+ An average of    20.89 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1370   Time =  628.9229 sec.
+ An average of    20.89 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1380   Time =  633.5103 sec.
+ An average of    20.89 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1390   Time =  638.0976 sec.
+ An average of    20.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1400   Time =  642.6849 sec.
+ An average of    20.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1410   Time =  647.2723 sec.
+ An average of    20.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1420   Time =  651.8596 sec.
+ An average of    20.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1430   Time =  656.4469 sec.
+ An average of    20.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1440   Time =  661.0343 sec.
+ An average of    20.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1450   Time =  665.6216 sec.
+ An average of    20.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1460   Time =  670.2089 sec.
+ An average of    20.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1470   Time =  674.7962 sec.
+ An average of    20.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1480   Time =  679.3836 sec.
+ An average of    20.88 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1490   Time =  683.9709 sec.
+ An average of    20.87 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1500   Time =  688.5582 sec.
+ An average of    20.87 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1510   Time =  693.1456 sec.
+ An average of    20.87 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1520   Time =  697.7329 sec.
+ An average of    20.87 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1530   Time =  702.3202 sec.
+ An average of    20.87 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1540   Time =  706.9076 sec.
+ An average of    20.87 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1550   Time =  711.4949 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1560   Time =  716.0822 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1570   Time =  720.6695 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1580   Time =  725.2569 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1590   Time =  729.8442 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1600   Time =  734.4315 sec.
+ An average of    20.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1610   Time =  739.0189 sec.
+ An average of    20.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1620   Time =  743.6062 sec.
+ An average of    20.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1630   Time =  748.1935 sec.
+ An average of    20.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1640   Time =  752.7809 sec.
+ An average of    20.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1650   Time =  757.3682 sec.
+ An average of    20.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1660   Time =  761.9555 sec.
+ An average of    20.84 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1670   Time =  766.5428 sec.
+ An average of    20.84 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1680   Time =  771.1302 sec.
+ An average of    20.84 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1690   Time =  775.7175 sec.
+ An average of    20.84 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1700   Time =  780.3048 sec.
+ An average of    20.84 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1710   Time =  784.8922 sec.
+ An average of    20.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1720   Time =  789.4795 sec.
+ An average of    20.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1730   Time =  794.0668 sec.
+ An average of    20.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1740   Time =  798.6542 sec.
+ An average of    20.85 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1750   Time =  803.2415 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1760   Time =  807.8288 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1770   Time =  812.4161 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1780   Time =  817.0035 sec.
+ An average of    20.86 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1790   Time =  821.5908 sec.
+ An average of    20.87 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+   Loop no.     1800   Time =  826.1781 sec.
+ An average of    20.87 GMRES iterations done per solve.
+   Minimum no.       19 and maximum no.       22 iterations per solve
+Writing OceanWave3D.end file, for possible restart.
+Change the file name to OceanWave3D.init and change IC to -1 for a hot start.
+
+   Totals: CPUtime =   4958.325 sec., Time steps =  1801, DOF= 73746
+

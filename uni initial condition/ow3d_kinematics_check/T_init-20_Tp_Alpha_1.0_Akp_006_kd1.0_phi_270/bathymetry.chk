@@ -1,0 +1,1 @@
+% Bottom bathymetry: ((x(i,j), y(i,j), h(i,j),h_x,h_xx,h_y,h_yy),j=1,Ny),i=1,Nx)

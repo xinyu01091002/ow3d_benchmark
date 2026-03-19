@@ -1,0 +1,13 @@
+MF12 third-order unidirectional initialization
+Generated: 19-Mar-2026 02:05:49
+Akp=0.0600, Alpha=8.0, kp=0.02790, kd=5.00, h=179.2115
+Tp=12.010552 s, t_init=-240.211047 s, phase shift=0 deg
+Components=87, energy keep frac=0.99900
+k-range=[0.012986, 0.043009] 1/m
+Focus position: x=7656.928331 m
+Grid: Nx=4097, dx=3.738735 m
+Total OW3D duration after initialization: 40.00 Tp
+Surface output stride: every 8 time step(s)
+OW3D kinematic output: enabled via Section 8 in OceanWave3D.inp
+Kinematics flag = 20, number of kinematics files = 1
+Requested plane: x=[1,4097] stride=1, y=[1,1] stride=1, t=[1,1801] stride=8

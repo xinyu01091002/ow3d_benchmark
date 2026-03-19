@@ -1,0 +1,30 @@
+Unidirectional OW3D initial-condition batch
+Updated: 19-Mar-2026 02:06:08
+
+Purpose
+Generate unidirectional OW3D initial conditions with OW3D kinematics output enabled in the settings file for downstream surface-kinematics checks.
+
+What this batch is trying to verify
+- This batch is intended to provide one OW3D-ready subdirectory per unidirectional test case with OW3D kinematics storage enabled.
+- Use these cases to inspect OW3D kinematics output alongside the usual surface elevation and surface potential outputs.
+- The Section 8 settings now request one x-z kinematics plane spanning the full x-range at the single y index of the unidirectional domain.
+
+Current workflow
+- Direct MF12 unidirectional reconstruction for each generated phase/state combination.
+- OW3D Section 8 is configured to save both surface output and one kinematics plane per case.
+- The requested kinematics plane spans the full x-range at the only y-index of the unidirectional setup.
+- One subdirectory per generated case.
+
+Current settings snapshot
+- output directory = uni initial condition\ow3d_kinematics_check
+- phases = [0, 90, 180, 270] deg
+- kd/Alpha pairs = [(kd=1.00, Alpha=1.0)]
+- t_init = -20.00 Tp
+- duration = 40.00 Tp
+- domain length = 15313.857 m
+- grid = [4097 x 1], dx = 3.739 m
+- surface stride = 8
+- OW3D kinematics enabled = true
+- OW3D kinematics flag = 20
+- OW3D kinematics files = 1
+- OW3D kinematics time stride = 8
