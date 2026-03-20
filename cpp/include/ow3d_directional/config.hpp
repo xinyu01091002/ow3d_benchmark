@@ -63,6 +63,14 @@ struct OutputConfig {
   int surface_format = 1;
 };
 
+struct CombinedCaseConfig {
+  double kd = 1.0;
+  double akp = 0.12;
+  double alpha = 8.0;
+  double t_init_periods = -40.0;
+  std::vector<double> phases_deg;
+};
+
 struct GeneratorConfig {
   PhysicsConfig physics;
   NonlinearConfig nonlinear;
@@ -71,6 +79,7 @@ struct GeneratorConfig {
   TimingConfig timing;
   VisualizationConfig visualization;
   OutputConfig output;
+  std::vector<CombinedCaseConfig> combined_cases;
 };
 
 struct SpectrumDefinition {

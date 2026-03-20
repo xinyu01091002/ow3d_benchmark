@@ -1,0 +1,19 @@
+Directional OW3D initial-condition batch
+Updated: 20-Mar-2026 14:48:47
+
+Purpose
+Standalone C++ directional OW3D generation batch using the MF12 spectral implementation.
+
+Workflow
+- Full direct spectral reconstruction for each requested phase.
+- Surface-only OW3D export.
+- Quick-look visualization and field CSV dumps enabled by default.
+
+Current settings snapshot
+- output directory = directional initial condition/cpp_large_spreading
+- phases = [0, 90, 180, 270] deg
+- heading = 0 deg
+- spread = 30 deg
+- domain = [9008.15, 5630.09] m
+- grid = [1025, 257], dx = 8.78844 m, dy = 21.907 m
+- surface stride = 8

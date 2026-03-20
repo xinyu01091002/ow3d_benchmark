@@ -34,6 +34,5 @@ struct ResultBundle {
 };
 
 ResultBundle run_case(const LoadedCase& loaded, int repeats = 1, bool warmup = false);
-void dump_coefficients_for_case(const LoadedCase& loaded, const std::filesystem::path& output_dir);
 
 }  // namespace mf12_cpp

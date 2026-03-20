@@ -26,10 +26,4 @@ FourPhaseSeparation separate_four_phase_fields(
     const std::vector<mf12_cpp::Matrix>& eta_phases,
     const std::vector<mf12_cpp::Matrix>& phi_phases);
 
-void write_four_phase_separation(
-    const std::filesystem::path& output_dir,
-    const GeneratorConfig& config,
-    const std::vector<CaseParameters>& phase_params,
-    const FourPhaseSeparation& separated);
-
 }  // namespace ow3d_directional

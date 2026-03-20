@@ -42,6 +42,19 @@ T read_with_default(const json& node, const char* key, const T& default_value) {
   return node.at(key).get<T>();
 }
 
+CombinedCaseConfig read_combined_case_config(const json& node, const GeneratorConfig& defaults) {
+  CombinedCaseConfig combined;
+  combined.kd = read_with_default(node, "kd", defaults.physics.kd_list.front());
+  combined.akp = read_with_default(node, "Akp", defaults.spectrum.akp_list.front());
+  combined.alpha = read_with_default(node, "Alpha", defaults.spectrum.alpha_list.front());
+  combined.t_init_periods = read_with_default(
+      node, "t_init_periods", defaults.timing.t_init_periods_list.front());
+  if (node.contains("phases_deg")) {
+    combined.phases_deg = node.at("phases_deg").get<std::vector<double>>();
+  }
+  return combined;
+}
+
 }  // namespace
 
 GeneratorConfig load_config(const std::filesystem::path& path) {
@@ -133,6 +146,20 @@ GeneratorConfig load_config(const std::filesystem::path& path) {
     config.spectrum.phases_deg = root.at("phases_deg").get<std::vector<double>>();
   }
 
+  if (root.contains("combined_cases")) {
+    const auto& node = root.at("combined_cases");
+    if (!node.is_array()) {
+      throw std::runtime_error("combined_cases must be an array of case objects.");
+    }
+    config.combined_cases.clear();
+    for (const auto& entry : node) {
+      if (!entry.is_object()) {
+        throw std::runtime_error("each combined_cases entry must be an object.");
+      }
+      config.combined_cases.push_back(read_combined_case_config(entry, config));
+    }
+  }
+
   return config;
 }
 
@@ -176,6 +203,21 @@ std::string config_summary_json(const GeneratorConfig& config) {
       {"store_surface_stride", config.output.store_surface_stride},
       {"surface_format", config.output.surface_format},
   };
+  if (!config.combined_cases.empty()) {
+    root["combined_cases"] = json::array();
+    for (const auto& combined : config.combined_cases) {
+      json item = {
+          {"kd", combined.kd},
+          {"Akp", combined.akp},
+          {"Alpha", combined.alpha},
+          {"t_init_periods", combined.t_init_periods},
+      };
+      if (!combined.phases_deg.empty()) {
+        item["phases_deg"] = combined.phases_deg;
+      }
+      root["combined_cases"].push_back(std::move(item));
+    }
+  }
   root["visualization"] = {
       {"enabled", config.visualization.enabled},
       {"write_linear_field", config.visualization.write_linear_field},

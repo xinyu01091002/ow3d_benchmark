@@ -18,7 +18,16 @@
 namespace {
 
 using ow3d_directional::CaseParameters;
+using ow3d_directional::CombinedCaseConfig;
 using ow3d_directional::GeneratorConfig;
+
+struct PlannedCaseGroup {
+  double kd = 0.0;
+  double akp = 0.0;
+  double alpha = 0.0;
+  double t_init_periods = 0.0;
+  std::vector<double> phases_deg;
+};
 
 std::size_t pair_count_for(std::size_t n_comp) {
   return n_comp < 2U ? 0U : n_comp * (n_comp - 1U) / 2U;
@@ -26,6 +35,40 @@ std::size_t pair_count_for(std::size_t n_comp) {
 
 std::size_t triplet_count_for(std::size_t n_comp) {
   return n_comp < 3U ? 0U : n_comp * (n_comp - 1U) * (n_comp - 2U) / 6U;
+}
+
+std::vector<PlannedCaseGroup> planned_case_groups(const GeneratorConfig& config) {
+  std::vector<PlannedCaseGroup> groups;
+  if (!config.combined_cases.empty()) {
+    groups.reserve(config.combined_cases.size());
+    for (const CombinedCaseConfig& combined : config.combined_cases) {
+      PlannedCaseGroup group;
+      group.kd = combined.kd;
+      group.akp = combined.akp;
+      group.alpha = combined.alpha;
+      group.t_init_periods = combined.t_init_periods;
+      group.phases_deg = combined.phases_deg.empty() ? config.spectrum.phases_deg : combined.phases_deg;
+      groups.push_back(std::move(group));
+    }
+    return groups;
+  }
+
+  for (double kd : config.physics.kd_list) {
+    for (double akp : config.spectrum.akp_list) {
+      for (double alpha : config.spectrum.alpha_list) {
+        for (double t_init_periods : config.timing.t_init_periods_list) {
+          PlannedCaseGroup group;
+          group.kd = kd;
+          group.akp = akp;
+          group.alpha = alpha;
+          group.t_init_periods = t_init_periods;
+          group.phases_deg = config.spectrum.phases_deg;
+          groups.push_back(std::move(group));
+        }
+      }
+    }
+  }
+  return groups;
 }
 
 void print_spectrum_summary(const CaseParameters& params) {
@@ -55,13 +98,17 @@ void print_usage() {
 }
 
 CaseParameters first_case_from_config(const GeneratorConfig& config) {
+  const auto groups = planned_case_groups(config);
+  if (groups.empty() || groups.front().phases_deg.empty()) {
+    throw std::runtime_error("No parameter sets available to generate.");
+  }
   return ow3d_directional::build_case_parameters(
       config,
-      config.physics.kd_list.at(0),
-      config.spectrum.akp_list.at(0),
-      config.spectrum.alpha_list.at(0),
-      config.spectrum.phases_deg.at(0),
-      config.timing.t_init_periods_list.at(0));
+      groups.front().kd,
+      groups.front().akp,
+      groups.front().alpha,
+      groups.front().phases_deg.front(),
+      groups.front().t_init_periods);
 }
 
 int run_inspect_config(const std::filesystem::path& config_path) {
@@ -83,12 +130,13 @@ int run_generate(const std::filesystem::path& config_path) {
       preview.dy);
 
   int written = 0;
-  for (double kd : config.physics.kd_list) {
-    for (double akp : config.spectrum.akp_list) {
-      for (double alpha : config.spectrum.alpha_list) {
-        for (double t_init_periods : config.timing.t_init_periods_list) {
-          const auto summary_params = ow3d_directional::build_case_parameters(
-              config, kd, akp, alpha, config.spectrum.phases_deg.at(0), t_init_periods);
+  const auto groups = planned_case_groups(config);
+  for (const PlannedCaseGroup& group : groups) {
+    if (group.phases_deg.empty()) {
+      throw std::runtime_error("Each generated case group must contain at least one phase.");
+    }
+    const auto summary_params = ow3d_directional::build_case_parameters(
+        config, group.kd, group.akp, group.alpha, group.phases_deg.front(), group.t_init_periods);
           std::cout << "\nGroup: "
                     << ow3d_directional::make_case_group_directory_name(config, summary_params).string()
                     << "\n";
@@ -97,9 +145,9 @@ int run_generate(const std::filesystem::path& config_path) {
           std::vector<CaseParameters> phase_params;
           std::vector<mf12_cpp::Matrix> nonlinear_eta_phases;
           std::vector<mf12_cpp::Matrix> nonlinear_phi_phases;
-          for (double phase_deg : config.spectrum.phases_deg) {
+          for (double phase_deg : group.phases_deg) {
             const auto params = ow3d_directional::build_case_parameters(
-                config, kd, akp, alpha, phase_deg, t_init_periods);
+                config, group.kd, group.akp, group.alpha, phase_deg, group.t_init_periods);
             const auto outputs = ow3d_directional::run_directional_case(config, params);
             const auto write_dir = config.output.output_root /
                                    ow3d_directional::make_case_directory_name(config, params);
@@ -107,12 +155,6 @@ int run_generate(const std::filesystem::path& config_path) {
             ow3d_directional::write_ow3d_init(write_dir / "OceanWave3D.init", outputs.nonlinear.eta, outputs.nonlinear.phi, params);
             ow3d_directional::write_ow3d_inp(write_dir / "OceanWave3D.inp", config, params);
             ow3d_directional::write_case_readme(write_dir / "OW_readme.txt", config, params);
-            ow3d_directional::write_field_csv(write_dir / "eta_linear.csv", outputs.linear.eta);
-            ow3d_directional::write_field_csv(write_dir / "phi_linear.csv", outputs.linear.phi);
-            ow3d_directional::write_field_csv(write_dir / "eta_nonlinear.csv", outputs.nonlinear.eta);
-            ow3d_directional::write_field_csv(write_dir / "phi_nonlinear.csv", outputs.nonlinear.phi);
-            ow3d_directional::write_field_csv(write_dir / "x.csv", outputs.nonlinear.x);
-            ow3d_directional::write_field_csv(write_dir / "y.csv", outputs.nonlinear.y);
             if (config.visualization.enabled) {
               ow3d_directional::write_visualizations(write_dir, config, params, outputs);
             }
@@ -123,19 +165,10 @@ int run_generate(const std::filesystem::path& config_path) {
             std::cout << "wrote: " << write_dir.string() << "\n";
           }
 
-          if (ow3d_directional::supports_standard_four_phase_separation(config.spectrum.phases_deg)) {
-            const auto separated = ow3d_directional::separate_four_phase_fields(
-                config.spectrum.phases_deg, nonlinear_eta_phases, nonlinear_phi_phases);
-            const auto separation_dir = config.output.output_root / "four_phase_separation" /
-                                        ow3d_directional::make_case_group_directory_name(config, summary_params);
-            ow3d_directional::write_four_phase_separation(separation_dir, config, phase_params, separated);
-            std::cout << "wrote four-phase separation: " << separation_dir.string() << "\n";
-          } else if (config.spectrum.phases_deg.size() == 4U) {
+          if (!ow3d_directional::supports_standard_four_phase_separation(group.phases_deg) &&
+              group.phases_deg.size() == 4U) {
             std::cout << "skipped four-phase separation because phases are not the standard [0, 90, 180, 270] set\n";
           }
-        }
-      }
-    }
   }
 
   std::cout << "{\n"

@@ -1,13 +1,8 @@
 #include "ow3d_directional/four_phase.hpp"
 
-#include "ow3d_directional/ow3d_export.hpp"
-
 #include <array>
 #include <cmath>
 #include <complex>
-#include <fstream>
-#include <iomanip>
-#include <sstream>
 #include <stdexcept>
 #include <vector>
 
@@ -180,17 +175,6 @@ mf12_cpp::Matrix linear_combine(
   return out;
 }
 
-std::string join_phase_list(const std::vector<CaseParameters>& phase_params) {
-  std::ostringstream out;
-  for (std::size_t i = 0; i < phase_params.size(); ++i) {
-    if (i > 0) {
-      out << ", ";
-    }
-    out << std::llround(phase_params[i].phase_deg);
-  }
-  return out.str();
-}
-
 }  // namespace
 
 bool supports_standard_four_phase_separation(const std::vector<double>& phases_deg) {
@@ -243,42 +227,6 @@ FourPhaseSeparation separate_four_phase_fields(
   separated.phi3 = linear_combine(phi_all, coef[2]);
   separated.phi4 = linear_combine(phi_all, coef[3]);
   return separated;
-}
-
-void write_four_phase_separation(
-    const std::filesystem::path& output_dir,
-    const GeneratorConfig& config,
-    const std::vector<CaseParameters>& phase_params,
-    const FourPhaseSeparation& separated) {
-  if (phase_params.empty()) {
-    throw std::runtime_error("Cannot write four-phase separation outputs without phase metadata.");
-  }
-  ensure_directory(output_dir);
-  write_field_csv(output_dir / "eta1.csv", separated.eta1);
-  write_field_csv(output_dir / "eta2.csv", separated.eta2);
-  write_field_csv(output_dir / "eta3.csv", separated.eta3);
-  write_field_csv(output_dir / "eta4.csv", separated.eta4);
-  write_field_csv(output_dir / "phi1.csv", separated.phi1);
-  write_field_csv(output_dir / "phi2.csv", separated.phi2);
-  write_field_csv(output_dir / "phi3.csv", separated.phi3);
-  write_field_csv(output_dir / "phi4.csv", separated.phi4);
-
-  std::ofstream out(output_dir / "readme.txt");
-  if (!out) {
-    throw std::runtime_error("Unable to write four-phase separation readme.");
-  }
-  const auto& ref = phase_params.front();
-  out << "Four-phase harmonic separation from generated nonlinear MF12 fields\n";
-  out << "Phases used (deg): [" << join_phase_list(phase_params) << "]\n";
-  out << "Method: MATLAB-style four-phase coefficients with Hilbert-style quadrature reconstruction.\n";
-  out << "Requested energy keep fraction: " << std::setprecision(6) << ref.spectrum_definition.energy_keep_frac << "\n";
-  out << "Candidate bins: " << ref.spectrum_definition.candidate_components
-      << ", after weight filter: " << ref.spectrum_definition.threshold_filtered_components
-      << ", energy-target count: " << ref.spectrum_definition.energy_target_components
-      << ", retained for reconstruction: " << ref.spectrum_definition.n_components << "\n";
-  out << "Retained weight fraction: " << ref.spectrum_definition.retained_weight_frac << "\n";
-  out << "Grid: Nx=" << config.domain.nx << ", Ny=" << config.domain.ny << "\n";
-  out << "Files: eta1/2/3/4.csv and phi1/2/3/4.csv\n";
 }
 
 }  // namespace ow3d_directional
