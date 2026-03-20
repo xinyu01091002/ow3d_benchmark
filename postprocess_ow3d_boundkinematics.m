@@ -14,16 +14,26 @@ CFG.data_root = fullfile(pwd, 'uni initial condition', 'ow3d_kinematics_check');
 CFG.folder_pattern = 'T_init-20_Tp_Alpha_1.0_Akp_006_kd1.0_phi_%d';
 CFG.phi_shifts_deg = 0:90:270;
 CFG.kinematics_file_id = 1; % Kinematics01.bin
+CFG.phit_mode = 'uncorrected'; % 'uncorrected' -> Dt*phi, 'sigma_corrected' -> Dt*phi - w*sigma*etat
 CFG.time_index = []; % [] -> use default near-final frame. Positive -> index from start. Negative -> index from end.
 CFG.default_time_index_from_end = 160; % Used only when time_index = [].
 CFG.lambda = 225;
-CFG.variables_to_process = {'u', 'w', 'phi', 'p'};
+CFG.gravity = 9.81;
+CFG.variables_to_process = {'u', 'w', 'phi'};
 CFG.apply_x_filter = true;
 CFG.sigma_mode = 'surface'; % 'surface', 'index', or 'value'
 CFG.sigma_index = [];
 CFG.sigma_value = 0.0;
 CFG.save_mat = false;
+CFG.vwa_surface_compare_variables = {'u', 'w', 'phit'};
+CFG.apply_vwa_eta11_filter = false;
+CFG.vwa_small_kd_cutoff = 0.3;
+CFG.plot_window_lambda = 5.0;
 CFG.output_dir = fullfile(pwd, 'processed_boundkinematics');
+
+CFG.vwa_required_surface_variables = resolve_required_vwa_surface_variables(CFG.vwa_surface_compare_variables);
+CFG.process_variables = resolve_required_process_variables(CFG.variables_to_process, ...
+    CFG.vwa_surface_compare_variables, CFG.vwa_required_surface_variables);
 
 % -------------------- Load four OW3D kinematics snapshots ----------------
 data_by_phase = cell(1, numel(CFG.phi_shifts_deg));
@@ -40,7 +50,7 @@ for idx = 1:numel(CFG.phi_shifts_deg)
         error('Missing OW3D kinematics file: %s', kin_path);
     end
 
-    phase_data = read_ow3d_kinematics_snapshot(kin_path);
+    phase_data = read_ow3d_kinematics_snapshot(kin_path, CFG.phit_mode);
     assert_phase_compatibility(phase_data, data_by_phase, idx);
     data_by_phase{idx} = phase_data;
     time_index_by_phase(idx) = resolve_time_index(CFG, CFG.time_index, phase_data.it, numel(phase_data.t));
@@ -63,14 +73,14 @@ fprintf('Using kinematics time index %d of %d (t = %.6f s)\n', ...
     selected_time_index, numel(t_vec), t_selected);
 
 eta_phases = zeros(numel(CFG.phi_shifts_deg), size(ref.eta, 2));
-vars_phases = initialize_variable_phase_storage(CFG.variables_to_process, numel(CFG.phi_shifts_deg), ref);
+vars_phases = initialize_variable_phase_storage(CFG.process_variables, numel(CFG.phi_shifts_deg), ref);
 
 for idx = 1:numel(CFG.phi_shifts_deg)
     phase_data = data_by_phase{idx};
     eta_phases(idx, :) = squeeze(phase_data.eta(selected_time_index, :, 1));
 
-    for v_idx = 1:numel(CFG.variables_to_process)
-        var_name = CFG.variables_to_process{v_idx};
+    for v_idx = 1:numel(CFG.process_variables)
+        var_name = CFG.process_variables{v_idx};
         var_field = squeeze(phase_data.(var_name)(selected_time_index, :, :, 1));
         vars_phases.(var_name)(idx, :, :) = var_field;
     end
@@ -86,8 +96,8 @@ four_phase_coef = [
 eta_harmonics = reconstruct_harmonics_1d(eta_phases, four_phase_coef);
 var_harmonics = struct();
 
-for v_idx = 1:numel(CFG.variables_to_process)
-    var_name = CFG.variables_to_process{v_idx};
+for v_idx = 1:numel(CFG.process_variables)
+    var_name = CFG.process_variables{v_idx};
     var_harmonics.(var_name) = reconstruct_harmonics_xz(vars_phases.(var_name), four_phase_coef);
 end
 
@@ -96,10 +106,34 @@ kp = 2 * pi / CFG.lambda;
 if CFG.apply_x_filter
     eta_harmonics = filter_harmonics_x_only(eta_harmonics, x_vec, kp);
 
-    for v_idx = 1:numel(CFG.variables_to_process)
-        var_name = CFG.variables_to_process{v_idx};
+    for v_idx = 1:numel(CFG.process_variables)
+        var_name = CFG.process_variables{v_idx};
         var_harmonics.(var_name) = filter_harmonics_x_only(var_harmonics.(var_name), x_vec, kp);
     end
+end
+
+% -------------------- VWA-like surface-kinematic approximation -----------
+vwa_surface = struct();
+eta11_surface = squeeze(eta_harmonics(1, :));
+if CFG.apply_vwa_eta11_filter
+    eta11_surface = frequency_filtering_1d_local(eta11_surface, x_vec, kp, 1);
+end
+h_values = ref.h(:);
+h_values = h_values(isfinite(h_values));
+depth_value = mean(h_values);
+
+for v_idx = 1:numel(CFG.vwa_surface_compare_variables)
+    var_name = lower(CFG.vwa_surface_compare_variables{v_idx});
+    vwa_surface.(var_name) = approximate_surface_quantity_vwa_like( ...
+        var_name, eta11_surface, x_vec, depth_value, CFG.gravity, CFG.vwa_small_kd_cutoff, kp);
+end
+for v_idx = 1:numel(CFG.vwa_required_surface_variables)
+    var_name = lower(CFG.vwa_required_surface_variables{v_idx});
+    if isfield(vwa_surface, var_name)
+        continue;
+    end
+    vwa_surface.(var_name) = approximate_surface_quantity_vwa_like( ...
+        var_name, eta11_surface, x_vec, depth_value, CFG.gravity, CFG.vwa_small_kd_cutoff, kp);
 end
 
 % -------------------- Save processed snapshot ----------------------------
@@ -125,13 +159,19 @@ if CFG.save_mat
 end
 
 % -------------------- Visualization -------------------------------------
-x_plot = x_vec - 0.5 * (x_vec(1) + x_vec(end));
+x_plot = (x_vec - 0.5 * (x_vec(1) + x_vec(end))) / CFG.lambda;
+x_limits = resolve_plot_xlim(x_plot, eta_harmonics(1, :), CFG.plot_window_lambda);
 sigma_idx = resolve_sigma_index(CFG, sigma_vec);
 sigma_value = sigma_vec(sigma_idx);
 line_colors = [0.10 0.10 0.10; 0.80 0.26 0.18; 0.12 0.39 0.71; 0.55 0.16 0.51];
 
 for v_idx = 1:numel(CFG.variables_to_process)
     var_name = CFG.variables_to_process{v_idx};
+
+    if ismember(lower(var_name), lower(CFG.vwa_surface_compare_variables))
+        continue;
+    end
+
     harmonics = var_harmonics.(var_name);
 
     var1 = squeeze(harmonics(1, :, :)).';
@@ -156,7 +196,7 @@ for v_idx = 1:numel(CFG.variables_to_process)
 
     for panel_idx = 1:4
         ax = nexttile(tile);
-        draw_profile_panel(ax, x_plot, fields_to_plot{panel_idx}, line_colors(panel_idx, :), titles{panel_idx}, y_limits(panel_idx, :), variable_axis_label(var_name));
+        draw_profile_panel(ax, x_plot, fields_to_plot{panel_idx}, line_colors(panel_idx, :), titles{panel_idx}, y_limits(panel_idx, :), variable_axis_label(var_name), x_limits);
     end
 
     annotation(fig, 'textbox', [0.13 0.01 0.82 0.04], ...
@@ -170,12 +210,51 @@ for v_idx = 1:numel(CFG.variables_to_process)
         'Resolution', 300);
 end
 
+for v_idx = 1:numel(CFG.vwa_surface_compare_variables)
+    var_name = lower(CFG.vwa_surface_compare_variables{v_idx});
+    if ~isfield(var_harmonics, var_name) || ~isfield(vwa_surface, var_name)
+        continue;
+    end
+
+    ow3d_harmonics = { ...
+        squeeze(var_harmonics.(var_name)(1, sigma_idx, :)), ...
+        squeeze(var_harmonics.(var_name)(2, sigma_idx, :)), ...
+        squeeze(var_harmonics.(var_name)(3, sigma_idx, :))};
+    vwa_harmonics = { ...
+        vwa_surface.(var_name).order1(:), ...
+        vwa_surface.(var_name).order2(:), ...
+        vwa_surface.(var_name).order3(:)};
+    y_limits = compute_pairwise_ylimits(ow3d_harmonics, vwa_harmonics);
+
+    fig = create_publishable_figure([140 100 1450 920]);
+    tile = tiledlayout(fig, 3, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
+    title(tile, sprintf('Surface %s: OW3D vs VWA-like approximation (\\sigma = %.3f, t index = %d, t = %.4f s)', ...
+        quantity_display_name(var_name), sigma_value, selected_time_index, t_selected), ...
+        'Interpreter', 'tex', 'FontSize', 16, 'FontWeight', 'bold');
+
+    order_titles = {'(a) First harmonic', '(b) Second harmonic', '(c) Third harmonic'};
+    for n = 1:3
+        ax = nexttile(tile);
+        draw_comparison_panel(ax, x_plot, ow3d_harmonics{n}, vwa_harmonics{n}, order_titles{n}, ...
+            y_limits(n, :), quantity_axis_label(var_name), x_limits);
+    end
+
+    annotation(fig, 'textbox', [0.13 0.01 0.82 0.04], ...
+        'String', build_surface_compare_footer(var_name, CFG.apply_vwa_eta11_filter, depth_value, y_vec(1), sigma_value), ...
+        'Interpreter', 'tex', 'EdgeColor', 'none', 'HorizontalAlignment', 'left', ...
+        'FontName', 'Times New Roman', 'FontSize', 11);
+
+    exportgraphics(fig, fullfile(CFG.output_dir, ...
+        sprintf('OW3D_boundkinematics_surface_%s_vwa_compare_sigma_%03d_tidx_%04d.png', var_name, sigma_idx, selected_time_index)), ...
+        'Resolution', 300);
+end
+
 disp('OW3D bound-kinematics postprocessing complete.');
 
 % -------------------- Local helper functions -----------------------------
-function data = read_ow3d_kinematics_snapshot(kin_path)
-    [it, eta, etat_m, etatt_m, phi, phit_m, p_m, ut_m, u, v, w, uz, vz, wz, x, y, sigma, t] = ...
-        read_kinematics_file_local(kin_path); %#ok<ASGLU>
+function data = read_ow3d_kinematics_snapshot(kin_path, phit_mode)
+    [it, eta, etat_m, etatt_m, phi, phit_m, ut_m, u, v, w, uz, vz, wz, x, y, h, sigma, t] = ...
+        read_kinematics_file_local(kin_path, phit_mode); %#ok<ASGLU>
 
     data = struct();
     data.it = it;
@@ -183,8 +262,8 @@ function data = read_ow3d_kinematics_snapshot(kin_path)
     data.etat_m = etat_m;
     data.etatt_m = etatt_m;
     data.phi = phi;
+    data.phit = phit_m;
     data.phit_m = phit_m;
-    data.p = p_m;
     data.ut = ut_m;
     data.u = u;
     data.v = v;
@@ -194,13 +273,14 @@ function data = read_ow3d_kinematics_snapshot(kin_path)
     data.wz = wz;
     data.x = x;
     data.y = y;
+    data.h = h;
     data.sigma = sigma;
     data.t = t;
 end
 
-function [it, eta, etat_m, etatt_m, phi, phit_m, p_m, ut_m, u, v, w, uz, vz, wz, x, y, sigma, t] = read_kinematics_file_local(file_path)
+function [it, eta, etat_m, etatt_m, phi, phit_m, ut_m, u, v, w, uz, vz, wz, x, y, h, sigma, t] = read_kinematics_file_local(file_path, phit_mode)
     nbits = 32;
-    compute_pressure = true;
+    compute_derivatives = true;
 
     if nbits == 32
         int_nbit = 'int';
@@ -366,7 +446,7 @@ function [it, eta, etat_m, etatt_m, phi, phit_m, p_m, ut_m, u, v, w, uz, vz, wz,
         nt = it;
     end
 
-    if compute_pressure
+    if compute_derivatives
         alpha = 2;
         r = 2 * alpha + 1;
         c = build_stencil_even_local(alpha, 1);
@@ -382,14 +462,12 @@ function [it, eta, etat_m, etatt_m, phi, phit_m, p_m, ut_m, u, v, w, uz, vz, wz,
         etat_m = zeros(nt, size(eta, 2), size(eta, 3));
         etatt_m = zeros(nt, size(eta, 2), size(eta, 3));
         phit_m = zeros(size(phi));
-        p_m = zeros(size(phi));
         ut_m = zeros(size(phi));
 
         for idy = 1:ny
             etat = zeros(nt, nx);
             etatt = zeros(nt, nx);
             phit = zeros(nt, nz, nx);
-            p = zeros(nt, nz, nx);
             ut = zeros(nt, nz, nx);
 
             for ip = 1:nx
@@ -403,8 +481,14 @@ function [it, eta, etat_m, etatt_m, phi, phit_m, p_m, ut_m, u, v, w, uz, vz, wz,
                     u_col = u(:, j, ip, idy);
                     uz_col = uz(:, j, ip, idy);
 
-                    phit(:, j, ip) = dt_matrix * phi_col - w_col .* sigma(j) .* etat(:, ip);
-                    p(:, j, ip) = -(phit(:, j, ip) + 0.5 * (u_col.^2 + w_col.^2));
+                    switch lower(phit_mode)
+                        case 'uncorrected'
+                            phit(:, j, ip) = dt_matrix * phi_col;
+                        case 'sigma_corrected'
+                            phit(:, j, ip) = dt_matrix * phi_col - w_col .* sigma(j) .* etat(:, ip);
+                        otherwise
+                            error('Unsupported phit_mode: %s', phit_mode);
+                    end
                     ut(:, j, ip) = dt_matrix * u_col - uz_col .* sigma(j) .* etat(:, ip);
                 end
             end
@@ -412,14 +496,12 @@ function [it, eta, etat_m, etatt_m, phi, phit_m, p_m, ut_m, u, v, w, uz, vz, wz,
             etat_m(:, :, idy) = etat;
             etatt_m(:, :, idy) = etatt;
             phit_m(:, :, :, idy) = phit;
-            p_m(:, :, :, idy) = p;
             ut_m(:, :, :, idy) = ut;
         end
     else
         etat_m = 0;
         etatt_m = 0;
         phit_m = 0;
-        p_m = 0;
         ut_m = 0;
     end
 end
@@ -544,6 +626,10 @@ function assert_phase_compatibility(phase_data, data_by_phase, idx)
         error('Kinematics grid mismatch between phase 0 and phase index %d.', idx - 1);
     end
 
+    if ~isequal(size(phase_data.h), size(ref.h)) || any(abs(phase_data.h(:) - ref.h(:)) > 1e-12)
+        error('Bathymetry/depth mismatch between phase 0 and phase index %d.', idx - 1);
+    end
+
     if ~isequal(size(phase_data.eta), size(ref.eta))
         error('Kinematics eta array size mismatch between phase 0 and phase index %d.', idx - 1);
     end
@@ -619,10 +705,10 @@ function fig = create_publishable_figure(fig_position)
     fig = figure('Color', 'w', 'Position', fig_position, 'Renderer', 'painters');
 end
 
-function draw_profile_panel(ax, x_plot, y_plot, line_color, panel_title, y_limits, y_label)
-    plot(ax, x_plot, y_plot, 'Color', line_color, 'LineWidth', 1.8);
+function draw_profile_panel(ax, x_plot, y_plot, line_color, panel_title, y_limits, y_label, x_limits)
+    plot(ax, x_plot, y_plot, 'Color', line_color, 'LineWidth', 1.8, 'HandleVisibility', 'off');
     hold(ax, 'on');
-    yline(ax, 0, '-', 'Color', [0.45 0.45 0.45], 'LineWidth', 0.9);
+    yline(ax, 0, '-', 'Color', [0.45 0.45 0.45], 'LineWidth', 0.9, 'HandleVisibility', 'off');
     hold(ax, 'off');
     grid(ax, 'on');
     box(ax, 'on');
@@ -636,9 +722,9 @@ function draw_profile_panel(ax, x_plot, y_plot, line_color, panel_title, y_limit
     ax.GridAlpha = 0.14;
     ax.GridColor = [0 0 0];
     ax.Layer = 'top';
-    xlim(ax, [x_plot(1), x_plot(end)]);
+    xlim(ax, x_limits);
     ylim(ax, y_limits);
-    xlabel(ax, '$x$ (m)', 'Interpreter', 'latex', 'FontSize', 13);
+    xlabel(ax, '$x / \lambda$', 'Interpreter', 'latex', 'FontSize', 13);
     ylabel(ax, y_label, 'Interpreter', 'latex', 'FontSize', 13);
     title(ax, panel_title, 'Interpreter', 'tex', 'FontSize', 13, 'FontWeight', 'normal');
 end
@@ -658,6 +744,21 @@ function y_limits = compute_shared_ylimits_1d(fields_to_plot)
     end
 end
 
+function y_limits = compute_pairwise_ylimits(fields_a, fields_b)
+    n_fields = numel(fields_a);
+    y_limits = zeros(n_fields, 2);
+
+    for i = 1:n_fields
+        values = [fields_a{i}(:); fields_b{i}(:)];
+        y_abs_max = max(abs(values));
+        if y_abs_max == 0
+            y_abs_max = 1;
+        end
+        padding = 0.08 * y_abs_max;
+        y_limits(i, :) = [-y_abs_max - padding, y_abs_max + padding];
+    end
+end
+
 function label = variable_display_name(var_name)
     switch lower(var_name)
         case 'u'
@@ -668,8 +769,6 @@ function label = variable_display_name(var_name)
             label = 'vertical velocity';
         case 'phi'
             label = 'velocity potential';
-        case 'p'
-            label = 'dynamic pressure surrogate';
         case 'ut'
             label = 'horizontal acceleration';
         case 'phit'
@@ -679,14 +778,347 @@ function label = variable_display_name(var_name)
     end
 end
 
+function out = approximate_surface_quantity_vwa_like(quantity_name, eta11, x_vec, depth, gravity, small_kd_cutoff, kp)
+    eta11 = eta11(:);
+    x_vec = x_vec(:);
+
+    if numel(eta11) ~= numel(x_vec)
+        error('VWA-like surface-u approximation requires eta11 and x_vec with matching length.');
+    end
+
+    if numel(x_vec) < 2
+        error('Need at least two x-points for VWA-like surface-u approximation.');
+    end
+
+    dx = mean(diff(x_vec));
+    if any(abs(diff(x_vec) - dx) > 1e-10 * max(1, abs(dx)))
+        error('x_vec must be approximately uniformly spaced for the VWA-like surface-u approximation.');
+    end
+
+    nx = numel(x_vec);
+    kx = vwa_kxgrid_local(nx, dx);
+
+    if strcmpi(quantity_name, 'phit')
+        out = approximate_surface_phit_bulk_like(eta11, x_vec, depth, gravity, small_kd_cutoff, kp, kx);
+        return;
+    end
+
+    eta_analytic = hilbert(eta11);
+    eta_hat = fft(eta_analytic);
+
+    [coeff1, phase1] = surface_quantity_transfer_coeff(quantity_name, 1, abs(kx), depth, gravity, small_kd_cutoff);
+    [coeff2, phase2] = surface_quantity_transfer_coeff(quantity_name, 2, abs(kx), depth, gravity, small_kd_cutoff);
+    [coeff3, phase3] = surface_quantity_transfer_coeff(quantity_name, 3, abs(kx), depth, gravity, small_kd_cutoff);
+
+    kappa1 = ifft(eta_hat .* coeff1);
+    kappa2 = ifft(eta_hat .* coeff2);
+    kappa3 = ifft(eta_hat .* coeff3);
+
+    out = struct();
+    out.order1 = apply_phase_operator(kappa1, phase1);
+    out.order2 = apply_phase_operator(eta_analytic .* kappa2, phase2);
+    out.order3 = apply_phase_operator((eta_analytic .^ 2) .* kappa3, phase3);
+    out.kx = kx;
+    out.eta11 = eta11;
+end
+
+function out = approximate_surface_phit_bulk_like(eta11, x_vec, depth, gravity, small_kd_cutoff, kp, kx)
+    eta11 = eta11(:);
+    x_vec = x_vec(:);
+    kx = kx(:);
+
+    k_abs = abs(kx);
+    kd = k_abs .* depth;
+    kd_safe = max(kd, 1e-12);
+    sigma = tanh(kd_safe);
+    omega = sqrt(gravity .* k_abs .* sigma);
+    zero_mask = (k_abs <= 1e-12);
+
+    eta_analytic = hilbert(eta11);
+    eta_hat = fft(eta_analytic);
+
+    coeff_phit1 = -(omega.^2 ./ max(k_abs, 1e-12)) .* coth(kd_safe);
+    coeff_phitz1 = -omega.^2;
+    coeff_phitzz1 = -k_abs .* omega.^2 .* coth(kd_safe);
+
+    coeff_eta2 = k_abs .* (3 - sigma.^2) ./ (8 * sigma.^3);
+    coeff_phit2_direct = -omega.^2 .* (3 * cosh(2 * kd_safe) ./ (4 * sinh(kd_safe).^4));
+    coeff_phitz2 = -3 .* k_abs .* omega.^2 .* cosh(kd_safe) ./ sinh(kd_safe).^3;
+    coeff_phit3_direct = (3 / 64) .* k_abs .* omega.^2 .* ...
+        ((-11 + 2 * cosh(2 * kd_safe)) .* cosh(3 * kd_safe) ./ sinh(kd_safe).^7);
+
+    coeff_list = {coeff_phit1, coeff_phitz1, coeff_phitzz1, coeff_eta2, coeff_phit2_direct, coeff_phitz2, coeff_phit3_direct};
+    for i = 1:numel(coeff_list)
+        coeff = coeff_list{i};
+        coeff(~isfinite(coeff)) = 0;
+        coeff(zero_mask) = 0;
+        coeff(kd < small_kd_cutoff) = 0;
+        coeff_list{i} = coeff;
+    end
+    coeff_phit1 = coeff_list{1};
+    coeff_phitz1 = coeff_list{2};
+    coeff_phitzz1 = coeff_list{3};
+    coeff_eta2 = coeff_list{4};
+    coeff_phit2_direct = coeff_list{5};
+    coeff_phitz2 = coeff_list{6};
+    coeff_phit3_direct = coeff_list{7};
+
+    phit1 = real(ifft(eta_hat .* coeff_phit1));
+    phitz1 = real(ifft(eta_hat .* coeff_phitz1));
+    phitzz1 = real(ifft(eta_hat .* coeff_phitzz1));
+
+    eta2 = real(eta_analytic .* ifft(eta_hat .* coeff_eta2));
+    phit2_direct = real(eta_analytic .* ifft(eta_hat .* coeff_phit2_direct));
+    phitz2 = real(eta_analytic .* ifft(eta_hat .* coeff_phitz2));
+    phit3_direct = real((eta_analytic .^ 2) .* ifft(eta_hat .* coeff_phit3_direct));
+
+    phit2_surface_corr = frequency_filtering_1d_local(eta11 .* phitz1, x_vec, kp, 2);
+    phit3_term_b = frequency_filtering_1d_local(eta11 .* phitz2, x_vec, kp, 3);
+    phit3_term_c = frequency_filtering_1d_local(eta2 .* phitz1, x_vec, kp, 3);
+    phit3_term_d = 0.5 * frequency_filtering_1d_local((eta11 .^ 2) .* phitzz1, x_vec, kp, 3);
+
+    out = struct();
+    out.order1 = phit1;
+    out.order2 = phit2_direct + phit2_surface_corr;
+    out.order3 = phit3_direct + phit3_term_b + phit3_term_c + phit3_term_d;
+    out.kx = kx;
+    out.eta11 = eta11;
+    out.debug = struct( ...
+        'eta2', eta2, ...
+        'phitz1', phitz1, ...
+        'phitzz1', phitzz1, ...
+        'phit2_direct', phit2_direct, ...
+        'phitz2', phitz2, ...
+        'phit3_direct', phit3_direct, ...
+        'phit2_surface_corr', phit2_surface_corr, ...
+        'phit3_term_b', phit3_term_b, ...
+        'phit3_term_c', phit3_term_c, ...
+        'phit3_term_d', phit3_term_d);
+end
+
+function [coeff, phase_type] = surface_quantity_transfer_coeff(quantity_name, order, k_abs, depth, gravity, small_kd_cutoff)
+    kd = k_abs .* depth;
+    kd_safe = max(kd, 1e-12);
+    sigma = tanh(kd_safe);
+    omega = sqrt(gravity .* k_abs .* sigma);
+
+    coeff = zeros(size(k_abs));
+    zero_mask = (k_abs <= 1e-12);
+    phase_type = 'real';
+
+    switch lower(quantity_name)
+        case 'u'
+            phase_type = 'real';
+            switch order
+                case 1
+                    coeff(~zero_mask) = omega(~zero_mask) .* coth(kd_safe(~zero_mask));
+                case 2
+                    coeff(~zero_mask) = k_abs(~zero_mask) .* omega(~zero_mask) .* ...
+                        (0.5 + 3 * cosh(2 * kd_safe(~zero_mask)) ./ (4 * sinh(kd_safe(~zero_mask)).^4));
+                case 3
+                    term1 = -(3 / 64) * k_abs.^2 .* omega .* ...
+                        ((-11 + 2 * cosh(2 * kd_safe)) ./ sinh(kd_safe).^7) .* cosh(3 * kd_safe);
+                    term2 = (3 / 2) * k_abs.^2 .* omega .* cosh(kd_safe) ./ sinh(kd_safe).^3;
+                    term3 = (1 / 8) * k_abs.^2 .* omega .* ...
+                        (2 + cosh(2 * kd_safe)) .* cosh(kd_safe) ./ sinh(kd_safe).^3;
+                    term4 = (1 / 8) * omega .* k_abs.^2 .* coth(kd_safe);
+                    coeff(~zero_mask) = term1(~zero_mask) + term2(~zero_mask) + term3(~zero_mask) + term4(~zero_mask);
+                otherwise
+                    error('Unsupported order %d for quantity %s.', order, quantity_name);
+            end
+
+        case 'w'
+            phase_type = 'neg_imag';
+            switch order
+                case 1
+                    coeff(~zero_mask) = -omega(~zero_mask);
+                case 2
+                    coeff(~zero_mask) = -omega(~zero_mask) .* k_abs(~zero_mask) .* ...
+                        (0.5 .* coth(kd_safe(~zero_mask)) + 1.5 .* cosh(kd_safe(~zero_mask)) ./ sinh(kd_safe(~zero_mask)).^3);
+                case 3
+                    term1 = (3 / 64) * omega .* k_abs.^2 .* ...
+                        ((-11 + 2 * cosh(2 * kd_safe)) ./ sinh(kd_safe).^7) .* sinh(3 * kd_safe);
+                    term2 = -(3 / 4) * omega .* k_abs.^2 .* cosh(2 * kd_safe) ./ sinh(kd_safe).^4;
+                    term3 = -(1 / 8) * omega .* k_abs.^2 .* ...
+                        (2 + cosh(2 * kd_safe)) .* coth(kd_safe).^2 ./ sinh(kd_safe).^2;
+                    term4 = -(1 / 8) * omega .* k_abs.^2;
+                    coeff(~zero_mask) = term1(~zero_mask) + term2(~zero_mask) + term3(~zero_mask) + term4(~zero_mask);
+                otherwise
+                    error('Unsupported order %d for quantity %s.', order, quantity_name);
+            end
+
+        case 'phi'
+            phase_type = 'imag';
+            switch order
+                case 1
+                    coeff(~zero_mask) = -(omega(~zero_mask) ./ k_abs(~zero_mask)) .* coth(kd_safe(~zero_mask));
+                case 2
+                    coeff(~zero_mask) = -(omega(~zero_mask) / 8) .* ...
+                        (4 + 3 * coth(kd_safe(~zero_mask)) ./ sinh(kd_safe(~zero_mask)).^3);
+                case 3
+                    coeff(~zero_mask) = -(k_abs(~zero_mask) ./ (64 * omega(~zero_mask))) .* ...
+                        (8 * gravity * k_abs(~zero_mask) + omega(~zero_mask).^2 .* coth(kd_safe(~zero_mask)) .* ...
+                        (16 + 56 ./ sinh(kd_safe(~zero_mask)).^2 + 32 ./ sinh(kd_safe(~zero_mask)).^4 + ...
+                        9 ./ sinh(kd_safe(~zero_mask)).^6));
+                otherwise
+                    error('Unsupported order %d for quantity %s.', order, quantity_name);
+            end
+
+        case 'phit'
+            phase_type = 'real';
+            switch order
+                case 1
+                    coeff(~zero_mask) = -(omega(~zero_mask).^2 ./ k_abs(~zero_mask)) .* coth(kd_safe(~zero_mask));
+                case 2
+                    coeff(~zero_mask) = -omega(~zero_mask).^2 .* ...
+                        (0.5 + 3 * cosh(2 * kd_safe(~zero_mask)) ./ (4 * sinh(kd_safe(~zero_mask)).^4));
+                case 3
+                    term1 = (3 / 64) .* ((-11 + 2 * cosh(2 * kd_safe)) .* cosh(3 * kd_safe) ./ sinh(kd_safe).^7);
+                    term2 = -(3 / 2) .* cosh(kd_safe) ./ sinh(kd_safe).^3;
+                    term3 = -((2 + cosh(2 * kd_safe)) .* coth(kd_safe)) ./ (8 * sinh(kd_safe).^2);
+                    term4 = -(1 / 8) .* coth(kd_safe);
+                    coeff(~zero_mask) = k_abs(~zero_mask) .* omega(~zero_mask).^2 .* ...
+                        (term1(~zero_mask) + term2(~zero_mask) + term3(~zero_mask) + term4(~zero_mask));
+                otherwise
+                    error('Unsupported order %d for quantity %s.', order, quantity_name);
+            end
+
+        otherwise
+            error('Unsupported surface quantity for VWA-like approximation: %s', quantity_name);
+    end
+
+    coeff(~isfinite(coeff)) = 0;
+    coeff(zero_mask) = 0;
+    coeff(kd < small_kd_cutoff) = 0;
+end
+
+function values = apply_phase_operator(field_in, phase_type)
+    switch lower(phase_type)
+        case 'real'
+            values = real(field_in);
+        case 'imag'
+            values = imag(field_in);
+        case 'neg_imag'
+            values = -imag(field_in);
+        otherwise
+            error('Unsupported phase operator: %s', phase_type);
+    end
+end
+
+function required_vars = resolve_required_vwa_surface_variables(compare_vars)
+    compare_vars = lower(compare_vars(:).');
+    required_vars = compare_vars;
+end
+
+function process_vars = resolve_required_process_variables(base_vars, compare_vars, required_surface_vars)
+    base_vars = lower(base_vars(:).');
+    compare_vars = lower(compare_vars(:).');
+    required_surface_vars = lower(required_surface_vars(:).');
+    process_vars = unique([base_vars, compare_vars, required_surface_vars], 'stable');
+end
+
+function kx = vwa_kxgrid_local(nx, dx)
+    if nx < 2
+        kx = 0;
+        return;
+    end
+
+    dk = 2 * pi / (nx * dx);
+    kpos = 0:floor(nx / 2);
+    kneg = -ceil(nx / 2) + 1:-1;
+    kx = (dk * [kpos, kneg]).';
+end
+
+function draw_comparison_panel(ax, x_plot, y_ow3d, y_vwa, panel_title, y_limits, y_label, x_limits)
+    h1 = plot(ax, x_plot, y_ow3d, 'Color', [0.10 0.10 0.10], 'LineWidth', 1.8, 'DisplayName', 'OW3D');
+    hold(ax, 'on');
+    h2 = plot(ax, x_plot, y_vwa, '--', 'Color', [0.82 0.24 0.14], 'LineWidth', 1.8, 'DisplayName', 'VWA-like');
+    yline(ax, 0, '-', 'Color', [0.45 0.45 0.45], 'LineWidth', 0.9, 'HandleVisibility', 'off');
+    hold(ax, 'off');
+    grid(ax, 'on');
+    box(ax, 'on');
+    ax.LineWidth = 1.0;
+    ax.FontName = 'Times New Roman';
+    ax.FontSize = 12;
+    ax.TickDir = 'out';
+    ax.TickLength = [0.012 0.012];
+    ax.GridAlpha = 0.14;
+    ax.GridColor = [0 0 0];
+    ax.Layer = 'top';
+    xlim(ax, x_limits);
+    ylim(ax, y_limits);
+    xlabel(ax, '$x / \lambda$', 'Interpreter', 'latex', 'FontSize', 13);
+    ylabel(ax, y_label, 'Interpreter', 'latex', 'FontSize', 13);
+    title(ax, panel_title, 'Interpreter', 'tex', 'FontSize', 13, 'FontWeight', 'normal');
+    legend(ax, [h1, h2], {'OW3D', 'VWA-like'}, 'Location', 'best', 'FontSize', 10);
+end
+
+function x_limits = resolve_plot_xlim(x_plot, eta11, plot_window_lambda)
+    eta11 = eta11(:);
+    x_plot = x_plot(:);
+
+    if numel(eta11) ~= numel(x_plot)
+        x_limits = [x_plot(1), x_plot(end)];
+        return;
+    end
+
+    [~, peak_idx] = max(abs(eta11));
+    half_width = 0.5 * plot_window_lambda;
+    x_center = x_plot(peak_idx);
+    x_limits = [x_center - half_width, x_center + half_width];
+    x_limits(1) = max(x_limits(1), x_plot(1));
+    x_limits(2) = min(x_limits(2), x_plot(end));
+end
+
+function out = ternary_text(condition, true_text, false_text)
+    if condition
+        out = true_text;
+    else
+        out = false_text;
+    end
+end
+
+function footer_text = build_surface_compare_footer(var_name, is_eta_filtered, depth_value, y_value, sigma_value)
+    quantity_note = sprintf('VWA-like input uses %s OW3D linear surface elevation \\eta^{(1)} only.', ...
+        ternary_text(is_eta_filtered, 'filtered', 'unfiltered'));
+    footer_text = sprintf('%s Depth = %.4f m, y = %.4f m, \\sigma = %.4f.', ...
+        quantity_note, depth_value, y_value, sigma_value);
+end
+
+function label = quantity_display_name(var_name)
+    switch lower(var_name)
+        case 'u'
+            label = 'horizontal velocity';
+        case 'w'
+            label = 'vertical velocity';
+        case 'phi'
+            label = 'surface potential';
+        case 'phit'
+            label = 'surface potential time derivative';
+        otherwise
+            label = var_name;
+    end
+end
+
+function label = quantity_axis_label(var_name)
+    switch lower(var_name)
+        case {'u', 'w'}
+            label = sprintf('$%s_s$ (m/s)', var_name);
+        case 'phi'
+            label = '$\phi_s$ (m$^2$/s)';
+        case 'phit'
+            label = '$\phi_{s,t}$ (m$^2$/s$^2$)';
+        otherwise
+            label = ['$', var_name, '$'];
+    end
+end
+
 function label = variable_axis_label(var_name)
     switch lower(var_name)
         case {'u', 'v', 'w', 'ut'}
             label = sprintf('$%s$', var_name);
         case 'phi'
             label = '$\phi$';
-        case 'p'
-            label = '$p$';
         case 'phit'
             label = '$\phi_t$';
         otherwise

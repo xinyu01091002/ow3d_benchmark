@@ -48,6 +48,34 @@ Generated-case roots:
 
 Each generator now writes a batch-level `readme` into its output root so the purpose of the generated subdirectories is documented locally.
 
+## Notes
+
+The working Markdown notes for the surface-kinematics investigation are now kept in `notes/`.
+
+Active notes:
+
+- `notes/surface_velocity_from_surface_potential_note.md`
+  Clarifies the difference between bulk potential derivatives and derivatives of the surface-evaluated potential.
+- `notes/surface_kinematics_workflow_summary.md`
+  Short summary of the current OW3D/VWA-style surface-kinematics workflow.
+- `notes/monochromatic_surface_horizontal_velocity_derivation.md`
+  Retained-harmonic monochromatic derivation for surface horizontal velocity.
+- `notes/monochromatic_surface_phit_from_bulk_explicit.md`
+  Bulk-to-surface retained-harmonic derivation for `\phi_t` at the free surface.
+- `notes/TODO_surface_kinematics.md`
+  Current follow-up notes, especially the suspicion that the OW3D/reader `phit` correction may be problematic.
+
+Exploratory notes kept for reference:
+
+- `notes/surface_pressure_free_surface_derivation.md`
+- `notes/monochromatic_surface_pressure_explicit.md`
+- `notes/monochromatic_surface_pressure_from_bulk_explicit.md`
+- `notes/third_order_surface_u_reredivation.md`
+
+Paper extraction reference:
+
+- `notes/MinerU_markdown_Madsen_and_Fuhrman_-_2012_-_Third-order_theory_for_multi-directional_irregular_2034742722689961984.md`
+
 ## Output Structure
 
 Each generated case folder contains:
