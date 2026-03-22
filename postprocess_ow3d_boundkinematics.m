@@ -2,6 +2,11 @@
 % Reconstruct first-, second-, and third-order OW3D bound-kinematic
 % components from four phase-shifted simulations using the same
 % Hilbert/four-phase workflow as the surface postprocessor.
+%
+% Workflow:
+% 1) read OW3D kinematics and compute time derivatives / pressure-like field
+% 2) export the selected raw snapshot to MAT
+% 3) run harmonic reconstruction and downstream postprocessing
 
 clc;
 clear;
@@ -24,8 +29,9 @@ CFG.apply_x_filter = true;
 CFG.sigma_mode = 'surface'; % 'surface', 'index', or 'value'
 CFG.sigma_index = [];
 CFG.sigma_value = 0.0;
-CFG.save_mat = false;
-CFG.vwa_surface_compare_variables = {'u', 'w', 'phit'};
+CFG.save_raw_mat = true;
+CFG.save_processed_mat = false;
+CFG.vwa_surface_compare_variables = {'u', 'w'};
 CFG.apply_vwa_eta11_filter = false;
 CFG.vwa_small_kd_cutoff = 0.3;
 CFG.plot_window_lambda = 5.0;
@@ -34,6 +40,8 @@ CFG.output_dir = fullfile(pwd, 'processed_boundkinematics');
 CFG.vwa_required_surface_variables = resolve_required_vwa_surface_variables(CFG.vwa_surface_compare_variables);
 CFG.process_variables = resolve_required_process_variables(CFG.variables_to_process, ...
     CFG.vwa_surface_compare_variables, CFG.vwa_required_surface_variables);
+
+setup_vwa_surface_paths();
 
 % -------------------- Load four OW3D kinematics snapshots ----------------
 data_by_phase = cell(1, numel(CFG.phi_shifts_deg));
@@ -71,6 +79,31 @@ t_selected = t_vec(selected_time_index);
 
 fprintf('Using kinematics time index %d of %d (t = %.6f s)\n', ...
     selected_time_index, numel(t_vec), t_selected);
+
+% -------------------- Save raw snapshot before postprocessing ----------- 
+if ~isfolder(CFG.output_dir)
+    mkdir(CFG.output_dir);
+end
+
+raw_meta = struct();
+raw_meta.data_root = CFG.data_root;
+raw_meta.folder_pattern = CFG.folder_pattern;
+raw_meta.phi_shifts_deg = CFG.phi_shifts_deg;
+raw_meta.kinematics_file_id = CFG.kinematics_file_id;
+raw_meta.phit_mode = CFG.phit_mode;
+raw_meta.time_index = selected_time_index;
+raw_meta.time_value = t_selected;
+raw_meta.lambda = CFG.lambda;
+raw_meta.gravity = CFG.gravity;
+raw_meta.sigma = sigma_vec;
+raw_meta.x = x_vec;
+raw_meta.y = y_vec;
+
+if CFG.save_raw_mat
+    raw_snapshot = build_raw_phase_snapshot(data_by_phase, CFG.phi_shifts_deg, selected_time_index);
+    save(fullfile(CFG.output_dir, sprintf('OW3D_boundkinematics_raw_tidx_%04d.mat', selected_time_index)), ...
+        'raw_snapshot', 'raw_meta', '-v7.3');
+end
 
 eta_phases = zeros(numel(CFG.phi_shifts_deg), size(ref.eta, 2));
 vars_phases = initialize_variable_phase_storage(CFG.process_variables, numel(CFG.phi_shifts_deg), ref);
@@ -124,7 +157,7 @@ depth_value = mean(h_values);
 
 for v_idx = 1:numel(CFG.vwa_surface_compare_variables)
     var_name = lower(CFG.vwa_surface_compare_variables{v_idx});
-    vwa_surface.(var_name) = approximate_surface_quantity_vwa_like( ...
+    vwa_surface.(var_name) = compute_surface_vwa_quantity_dispatch( ...
         var_name, eta11_surface, x_vec, depth_value, CFG.gravity, CFG.vwa_small_kd_cutoff, kp);
 end
 for v_idx = 1:numel(CFG.vwa_required_surface_variables)
@@ -132,20 +165,17 @@ for v_idx = 1:numel(CFG.vwa_required_surface_variables)
     if isfield(vwa_surface, var_name)
         continue;
     end
-    vwa_surface.(var_name) = approximate_surface_quantity_vwa_like( ...
+    vwa_surface.(var_name) = compute_surface_vwa_quantity_dispatch( ...
         var_name, eta11_surface, x_vec, depth_value, CFG.gravity, CFG.vwa_small_kd_cutoff, kp);
 end
 
 % -------------------- Save processed snapshot ----------------------------
-if ~isfolder(CFG.output_dir)
-    mkdir(CFG.output_dir);
-end
-
 meta = struct();
 meta.data_root = CFG.data_root;
 meta.folder_pattern = CFG.folder_pattern;
 meta.phi_shifts_deg = CFG.phi_shifts_deg;
 meta.kinematics_file_id = CFG.kinematics_file_id;
+meta.phit_mode = CFG.phit_mode;
 meta.time_index = selected_time_index;
 meta.time_value = t_selected;
 meta.lambda = CFG.lambda;
@@ -153,9 +183,9 @@ meta.sigma = sigma_vec;
 meta.x = x_vec;
 meta.y = y_vec;
 
-if CFG.save_mat
+if CFG.save_processed_mat
     save(fullfile(CFG.output_dir, sprintf('OW3D_boundkinematics_tidx_%04d.mat', selected_time_index)), ...
-        'eta_harmonics', 'var_harmonics', 'meta');
+        'eta_harmonics', 'var_harmonics', 'meta', '-v7.3');
 end
 
 % -------------------- Visualization -------------------------------------
@@ -252,8 +282,31 @@ end
 disp('OW3D bound-kinematics postprocessing complete.');
 
 % -------------------- Local helper functions -----------------------------
+function setup_vwa_surface_paths()
+    helper_dir = fullfile(fileparts(mfilename('fullpath')), 'test functions for VWA Opensource');
+    if ~isfolder(helper_dir)
+        error('Missing VWA helper directory: %s', helper_dir);
+    end
+    addpath(helper_dir);
+end
+
+function out = compute_surface_vwa_quantity_dispatch(quantity_name, eta11, x_vec, depth, gravity, small_kd_cutoff, kp)
+    quantity_name = lower(quantity_name);
+
+    switch quantity_name
+        case {'u', 'w'}
+            opts = struct('analytic_side', 'neg', 'small_kd_min', small_kd_cutoff);
+            out = vwa_compute_surface_quantity(eta11, x_vec, depth, gravity, quantity_name, opts);
+            out.kx = out.meta.kx;
+            out.eta11 = eta11(:);
+        otherwise
+            out = approximate_surface_quantity_vwa_like( ...
+                quantity_name, eta11, x_vec, depth, gravity, small_kd_cutoff, kp);
+    end
+end
+
 function data = read_ow3d_kinematics_snapshot(kin_path, phit_mode)
-    [it, eta, etat_m, etatt_m, phi, phit_m, ut_m, u, v, w, uz, vz, wz, x, y, h, sigma, t] = ...
+    [it, eta, etat_m, etatt_m, phi, phit_m, p_m, ut_m, u, v, w, uz, vz, wz, x, y, h, sigma, t] = ...
         read_kinematics_file_local(kin_path, phit_mode); %#ok<ASGLU>
 
     data = struct();
@@ -264,6 +317,8 @@ function data = read_ow3d_kinematics_snapshot(kin_path, phit_mode)
     data.phi = phi;
     data.phit = phit_m;
     data.phit_m = phit_m;
+    data.p = p_m;
+    data.pressure = p_m;
     data.ut = ut_m;
     data.u = u;
     data.v = v;
@@ -278,7 +333,7 @@ function data = read_ow3d_kinematics_snapshot(kin_path, phit_mode)
     data.t = t;
 end
 
-function [it, eta, etat_m, etatt_m, phi, phit_m, ut_m, u, v, w, uz, vz, wz, x, y, h, sigma, t] = read_kinematics_file_local(file_path, phit_mode)
+function [it, eta, etat_m, etatt_m, phi, phit_m, p_m, ut_m, u, v, w, uz, vz, wz, x, y, h, sigma, t] = read_kinematics_file_local(file_path, phit_mode)
     nbits = 32;
     compute_derivatives = true;
 
@@ -462,12 +517,14 @@ function [it, eta, etat_m, etatt_m, phi, phit_m, ut_m, u, v, w, uz, vz, wz, x, y
         etat_m = zeros(nt, size(eta, 2), size(eta, 3));
         etatt_m = zeros(nt, size(eta, 2), size(eta, 3));
         phit_m = zeros(size(phi));
+        p_m = zeros(size(phi));
         ut_m = zeros(size(phi));
 
         for idy = 1:ny
             etat = zeros(nt, nx);
             etatt = zeros(nt, nx);
             phit = zeros(nt, nz, nx);
+            p = zeros(nt, nz, nx);
             ut = zeros(nt, nz, nx);
 
             for ip = 1:nx
@@ -489,6 +546,7 @@ function [it, eta, etat_m, etatt_m, phi, phit_m, ut_m, u, v, w, uz, vz, wz, x, y
                         otherwise
                             error('Unsupported phit_mode: %s', phit_mode);
                     end
+                    p(:, j, ip) = -(phit(:, j, ip) + 0.5 * (u_col.^2 + v(:, j, ip, idy).^2 + w_col.^2));
                     ut(:, j, ip) = dt_matrix * u_col - uz_col .* sigma(j) .* etat(:, ip);
                 end
             end
@@ -496,12 +554,14 @@ function [it, eta, etat_m, etatt_m, phi, phit_m, ut_m, u, v, w, uz, vz, wz, x, y
             etat_m(:, :, idy) = etat;
             etatt_m(:, :, idy) = etatt;
             phit_m(:, :, :, idy) = phit;
+            p_m(:, :, :, idy) = p;
             ut_m(:, :, :, idy) = ut;
         end
     else
         etat_m = 0;
         etatt_m = 0;
         phit_m = 0;
+        p_m = 0;
         ut_m = 0;
     end
 end
@@ -565,6 +625,39 @@ function time_index = resolve_time_index(CFG, cfg_time_index, n_times_valid, n_t
     end
     time_index = round(time_index(1));
     time_index = min(max(1, time_index), min(n_times_valid, n_times_total));
+end
+
+function raw_snapshot = build_raw_phase_snapshot(data_by_phase, phi_shifts_deg, selected_time_index)
+    raw_snapshot = struct();
+
+    for idx = 1:numel(phi_shifts_deg)
+        phase_field = matlab.lang.makeValidName(sprintf('phase_%03d', phi_shifts_deg(idx)));
+        phase_data = data_by_phase{idx};
+
+        snapshot = struct();
+        snapshot.phi_shift_deg = phi_shifts_deg(idx);
+        snapshot.it = phase_data.it;
+        snapshot.t = phase_data.t(selected_time_index);
+        snapshot.x = phase_data.x;
+        snapshot.y = phase_data.y;
+        snapshot.h = phase_data.h;
+        snapshot.sigma = phase_data.sigma;
+        snapshot.eta = squeeze(phase_data.eta(selected_time_index, :, :));
+        snapshot.etat = squeeze(phase_data.etat_m(selected_time_index, :, :));
+        snapshot.etatt = squeeze(phase_data.etatt_m(selected_time_index, :, :));
+        snapshot.phi = squeeze(phase_data.phi(selected_time_index, :, :, :));
+        snapshot.phit = squeeze(phase_data.phit(selected_time_index, :, :, :));
+        snapshot.p = squeeze(phase_data.p(selected_time_index, :, :, :));
+        snapshot.ut = squeeze(phase_data.ut(selected_time_index, :, :, :));
+        snapshot.u = squeeze(phase_data.u(selected_time_index, :, :, :));
+        snapshot.v = squeeze(phase_data.v(selected_time_index, :, :, :));
+        snapshot.w = squeeze(phase_data.w(selected_time_index, :, :, :));
+        snapshot.uz = squeeze(phase_data.uz(selected_time_index, :, :, :));
+        snapshot.vz = squeeze(phase_data.vz(selected_time_index, :, :, :));
+        snapshot.wz = squeeze(phase_data.wz(selected_time_index, :, :, :));
+
+        raw_snapshot.(phase_field) = snapshot;
+    end
 end
 
 function vars_phases = initialize_variable_phase_storage(var_names, n_phases, ref)
@@ -773,6 +866,8 @@ function label = variable_display_name(var_name)
             label = 'horizontal acceleration';
         case 'phit'
             label = 'potential time derivative';
+        case {'p', 'pressure'}
+            label = 'pressure-like Bernoulli field';
         otherwise
             label = var_name;
     end
@@ -815,9 +910,9 @@ function out = approximate_surface_quantity_vwa_like(quantity_name, eta11, x_vec
     kappa3 = ifft(eta_hat .* coeff3);
 
     out = struct();
-    out.order1 = apply_phase_operator(kappa1, phase1);
-    out.order2 = apply_phase_operator(eta_analytic .* kappa2, phase2);
-    out.order3 = apply_phase_operator((eta_analytic .^ 2) .* kappa3, phase3);
+    out.order1 = vwa_apply_phase_operator(kappa1, phase1);
+    out.order2 = vwa_apply_phase_operator(eta_analytic .* kappa2, phase2);
+    out.order3 = vwa_apply_phase_operator((eta_analytic .^ 2) .* kappa3, phase3);
     out.kx = kx;
     out.eta11 = eta11;
 end
@@ -897,6 +992,11 @@ function out = approximate_surface_phit_bulk_like(eta11, x_vec, depth, gravity, 
 end
 
 function [coeff, phase_type] = surface_quantity_transfer_coeff(quantity_name, order, k_abs, depth, gravity, small_kd_cutoff)
+    if ismember(lower(quantity_name), {'u', 'w'})
+        [coeff, phase_type] = vwa_surface_quantity_coeff(quantity_name, order, k_abs, depth, gravity, small_kd_cutoff);
+        return;
+    end
+
     kd = k_abs .* depth;
     kd_safe = max(kd, 1e-12);
     sigma = tanh(kd_safe);
@@ -992,19 +1092,6 @@ function [coeff, phase_type] = surface_quantity_transfer_coeff(quantity_name, or
     coeff(kd < small_kd_cutoff) = 0;
 end
 
-function values = apply_phase_operator(field_in, phase_type)
-    switch lower(phase_type)
-        case 'real'
-            values = real(field_in);
-        case 'imag'
-            values = imag(field_in);
-        case 'neg_imag'
-            values = -imag(field_in);
-        otherwise
-            error('Unsupported phase operator: %s', phase_type);
-    end
-end
-
 function required_vars = resolve_required_vwa_surface_variables(compare_vars)
     compare_vars = lower(compare_vars(:).');
     required_vars = compare_vars;
@@ -1095,6 +1182,8 @@ function label = quantity_display_name(var_name)
             label = 'surface potential';
         case 'phit'
             label = 'surface potential time derivative';
+        case {'p', 'pressure'}
+            label = 'surface pressure-like field';
         otherwise
             label = var_name;
     end
@@ -1108,6 +1197,8 @@ function label = quantity_axis_label(var_name)
             label = '$\phi_s$ (m$^2$/s)';
         case 'phit'
             label = '$\phi_{s,t}$ (m$^2$/s$^2$)';
+        case {'p', 'pressure'}
+            label = '$p_s$ (m$^2$/s$^2$)';
         otherwise
             label = ['$', var_name, '$'];
     end
@@ -1121,6 +1212,8 @@ function label = variable_axis_label(var_name)
             label = '$\phi$';
         case 'phit'
             label = '$\phi_t$';
+        case {'p', 'pressure'}
+            label = '$p$';
         otherwise
             label = ['$', var_name, '$'];
     end

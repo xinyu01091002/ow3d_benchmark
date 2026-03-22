@@ -13,10 +13,10 @@ This repository is currently organized around MF12-based MATLAB tools for prepar
   - reuse of the phase-0 third-order increment through a `3phi` phase shift for the non-zero phase cases
 - `postprocess_ow3d_boundwaves.m`
   Reads OW3D `EP_XXXXX.bin` files, applies the four-phase reconstruction workflow, and plots first-, second-, and third-order bound-wave fields.
-- `validate_fourphase_from_phase0_components.m`
-  Validation script used to test whether four-phase directional cases can be accelerated by reusing phase-0 MF12 components.
-- `validate_phase_shift_from_single_run.m`
-  Earlier validation sandbox kept for comparison with the newer component-based test.
+- `postprocess_ow3d_boundkinematics.m`
+  Reads four phase-shifted OW3D kinematics files, reconstructs first-, second-, and third-order surface/bulk kinematic harmonics, and compares OW3D surface `u` and `w` against the current VWA-style approximation driven only by `eta^(1)`.
+- `diagnose_ow3d_phit.m`
+  Focused diagnostic script for checking the meaning and scaling of the OW3D `phit` quantity separately from the main `u/w` comparison workflow.
 
 ## C++ Generator
 
@@ -34,7 +34,12 @@ This repository is currently organized around MF12-based MATLAB tools for prepar
 Core dependency:
 
 - `irregularWavesMF12/`
-  Bundled MF12 implementation used by the generators and validation scripts.
+  Bundled MF12 implementation used by the generators and postprocessing utilities.
+
+VWA helper/test utilities:
+
+- `test functions for VWA Opensource/`
+  Reusable MATLAB helpers for the current VWA-style comparisons, including the standalone surface-velocity test script and the shared `u`/`w` transfer-kernel functions now used by the kinematics postprocessor.
 
 Reference note:
 
@@ -63,7 +68,7 @@ Active notes:
 - `notes/monochromatic_surface_phit_from_bulk_explicit.md`
   Bulk-to-surface retained-harmonic derivation for `\phi_t` at the free surface.
 - `notes/TODO_surface_kinematics.md`
-  Current follow-up notes, especially the suspicion that the OW3D/reader `phit` correction may be problematic.
+  Current follow-up notes, especially the separate unresolved questions around the OW3D/reader interpretation of `phit`.
 
 Exploratory notes kept for reference:
 
@@ -128,8 +133,15 @@ Then use the utilities as needed:
 
 ```matlab
 run('postprocess_ow3d_boundwaves.m');
-run('validate_fourphase_from_phase0_components.m');
+run('postprocess_ow3d_boundkinematics.m');
+run(fullfile('test functions for VWA Opensource', 'test_surface_velocity_script.m'));
 ```
+
+The current surface-kinematics comparison workflow is:
+
+- run `postprocess_ow3d_boundkinematics.m` on the unidirectional OW3D kinematics cases
+- use the built-in OW3D vs VWA comparison plots for surface `u` and `w`
+- optionally run `test functions for VWA Opensource/test_surface_velocity_script.m` for a standalone comparison figure set driven by the saved raw snapshot
 
 ## Notes
 
@@ -138,6 +150,7 @@ run('validate_fourphase_from_phase0_components.m');
 - `store_surface_stride` controls OW3D surface-output frequency and the directional generator now defaults to `4`.
 - the directional generator now uses a fixed user-specified `Tp` for timing instead of recomputing it from `kp` and `kd`
 - The current directional output root may be a temporary test directory, depending on the configuration block at the top of the script.
+- The current VWA comparison path that is actively wired into the postprocessor is focused on surface `u` and `w`; `phit` is kept as a separate diagnostic topic for now.
 
 ## Development Log
 
@@ -163,3 +176,5 @@ run('validate_fourphase_from_phase0_components.m');
   Reworked the directional batch for error-wave separation studies with `t_init = [-40, -30, -20] Tp`, a common `t_end = 5 Tp`, and default surface stride `4`.
 - 2026-03-15
   Switched the directional timing to fixed `Tp = 12`, updated the default `kp` to `0.00279`, and added automatic focus placement to reduce wasted domain length in long pre-focus runs.
+- 2026-03-22
+  Extracted the surface-velocity VWA `u`/`w` kernels into reusable helpers under `test functions for VWA Opensource/`, added a standalone surface-velocity comparison script, and wired the kinematics postprocessor to use the shared helpers.
