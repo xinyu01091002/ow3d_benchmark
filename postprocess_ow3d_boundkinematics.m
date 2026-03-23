@@ -35,6 +35,12 @@ CFG.vwa_surface_compare_variables = {'u', 'w'};
 CFG.apply_vwa_eta11_filter = false;
 CFG.vwa_small_kd_cutoff = 0.3;
 CFG.plot_window_lambda = 5.0;
+CFG.compare_mf12_subharmonic_surface = true;
+CFG.mf12_linear_energy_keep = 0.9999;
+CFG.mf12_subharmonic_cutoff_factor = 1.2;
+CFG.mf12_subharmonic_transition_factor = 1.2;
+CFG.export_standard_figures = false;
+CFG.export_subharmonic_spectrum_figures = true;
 CFG.output_dir = fullfile(pwd, 'processed_boundkinematics');
 
 CFG.vwa_required_surface_variables = resolve_required_vwa_surface_variables(CFG.vwa_surface_compare_variables);
@@ -154,6 +160,8 @@ end
 h_values = ref.h(:);
 h_values = h_values(isfinite(h_values));
 depth_value = mean(h_values);
+sigma_idx = resolve_sigma_index(CFG, sigma_vec);
+sigma_value = sigma_vec(sigma_idx);
 
 for v_idx = 1:numel(CFG.vwa_surface_compare_variables)
     var_name = lower(CFG.vwa_surface_compare_variables{v_idx});
@@ -167,6 +175,37 @@ for v_idx = 1:numel(CFG.vwa_required_surface_variables)
     end
     vwa_surface.(var_name) = compute_surface_vwa_quantity_dispatch( ...
         var_name, eta11_surface, x_vec, depth_value, CFG.gravity, CFG.vwa_small_kd_cutoff, kp);
+end
+
+surface_subharmonic_compare = struct();
+if CFG.compare_mf12_subharmonic_surface
+    if ~all(isfield(vars_phases, {'u', 'w'}))
+        error('MF12 second-subharmonic surface comparison requires u and w in vars_phases.');
+    end
+
+    subharmonic_cutoff = CFG.mf12_subharmonic_cutoff_factor * kp;
+    subharmonic_transition = CFG.mf12_subharmonic_transition_factor * subharmonic_cutoff;
+    ow3d_u_surface_mean = squeeze(mean(vars_phases.u(:, sigma_idx, :), 1));
+    ow3d_w_surface_mean = squeeze(mean(vars_phases.w(:, sigma_idx, :), 1));
+
+    surface_subharmonic_compare.ow3d.u = lowpass_wavenumber_component_local( ...
+        ow3d_u_surface_mean(:), x_vec, subharmonic_cutoff, subharmonic_transition);
+    surface_subharmonic_compare.ow3d.w = lowpass_wavenumber_component_local( ...
+        ow3d_w_surface_mean(:), x_vec, subharmonic_cutoff, subharmonic_transition);
+    surface_subharmonic_compare.mf12 = compute_mf12_second_subharmonic_surface( ...
+        eta11_surface(:), x_vec, depth_value, CFG.gravity, CFG.mf12_linear_energy_keep);
+    surface_subharmonic_compare.meta = struct( ...
+        'sigma_idx', sigma_idx, ...
+        'sigma_value', sigma_value, ...
+        'kp', kp, ...
+        'cutoff', subharmonic_cutoff, ...
+        'transition', subharmonic_transition, ...
+        'energy_keep', CFG.mf12_linear_energy_keep, ...
+        'linear_component_count', numel(surface_subharmonic_compare.mf12.linear_indices), ...
+        'mf12_mode', 'difference_terms_only');
+
+    fprintf('MF12 second subharmonic: kept %d linear components (energy keep = %.3f).\n', ...
+        surface_subharmonic_compare.meta.linear_component_count, CFG.mf12_linear_energy_keep);
 end
 
 % -------------------- Save processed snapshot ----------------------------
@@ -185,16 +224,15 @@ meta.y = y_vec;
 
 if CFG.save_processed_mat
     save(fullfile(CFG.output_dir, sprintf('OW3D_boundkinematics_tidx_%04d.mat', selected_time_index)), ...
-        'eta_harmonics', 'var_harmonics', 'meta', '-v7.3');
+        'eta_harmonics', 'var_harmonics', 'meta', 'surface_subharmonic_compare', '-v7.3');
 end
 
 % -------------------- Visualization -------------------------------------
 x_plot = (x_vec - 0.5 * (x_vec(1) + x_vec(end))) / CFG.lambda;
 x_limits = resolve_plot_xlim(x_plot, eta_harmonics(1, :), CFG.plot_window_lambda);
-sigma_idx = resolve_sigma_index(CFG, sigma_vec);
-sigma_value = sigma_vec(sigma_idx);
 line_colors = [0.10 0.10 0.10; 0.80 0.26 0.18; 0.12 0.39 0.71; 0.55 0.16 0.51];
 
+if CFG.export_standard_figures
 for v_idx = 1:numel(CFG.variables_to_process)
     var_name = CFG.variables_to_process{v_idx};
 
@@ -278,16 +316,105 @@ for v_idx = 1:numel(CFG.vwa_surface_compare_variables)
         sprintf('OW3D_boundkinematics_surface_%s_vwa_compare_sigma_%03d_tidx_%04d.png', var_name, sigma_idx, selected_time_index)), ...
         'Resolution', 300);
 end
+end
+
+if CFG.compare_mf12_subharmonic_surface && CFG.export_subharmonic_spectrum_figures && ~isempty(fieldnames(surface_subharmonic_compare))
+    for quantity_name = {'u', 'w'}
+        var_name = quantity_name{1};
+        ref_field = surface_subharmonic_compare.ow3d.(var_name);
+        mf12_field = surface_subharmonic_compare.mf12.(var_name);
+        [k_plot, ow3d_amp, mf12_amp] = compute_one_sided_spectrum(ref_field, mf12_field, x_vec, kp);
+
+        fig = create_publishable_figure([140 110 1450 760]);
+        tile = tiledlayout(fig, 2, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
+        title(tile, sprintf('Surface %s second subharmonic spectrum: OW3D vs MF12 (\\sigma = %.3f, t index = %d, t = %.4f s)', ...
+            quantity_display_name(var_name), sigma_value, selected_time_index, t_selected), ...
+            'Interpreter', 'tex', 'FontSize', 16, 'FontWeight', 'bold');
+
+        ax1 = nexttile(tile);
+        plot(ax1, k_plot, ow3d_amp, 'k-', 'LineWidth', 1.8, 'DisplayName', 'OW3D'); hold(ax1, 'on');
+        plot(ax1, k_plot, mf12_amp, '--', 'Color', [0.82 0.24 0.14], 'LineWidth', 1.8, 'DisplayName', 'MF12');
+        grid(ax1, 'on'); box(ax1, 'on');
+        set(ax1, 'FontName', 'Times New Roman', 'FontSize', 12, 'LineWidth', 1.0);
+        xlabel(ax1, '$|k| / k_p$', 'Interpreter', 'latex', 'FontSize', 13);
+        ylabel(ax1, 'Amplitude', 'Interpreter', 'tex', 'FontSize', 13);
+        title(ax1, 'Linear scale', 'Interpreter', 'tex', 'FontSize', 13, 'FontWeight', 'normal');
+        xlim(ax1, [0, max(3, max(k_plot))]);
+        legend(ax1, 'Location', 'best', 'FontSize', 10);
+
+        ax2 = nexttile(tile);
+        semilogy(ax2, k_plot, max(ow3d_amp, 1e-16), 'k-', 'LineWidth', 1.8, 'DisplayName', 'OW3D'); hold(ax2, 'on');
+        semilogy(ax2, k_plot, max(mf12_amp, 1e-16), '--', 'Color', [0.82 0.24 0.14], 'LineWidth', 1.8, 'DisplayName', 'MF12');
+        grid(ax2, 'on'); box(ax2, 'on');
+        set(ax2, 'FontName', 'Times New Roman', 'FontSize', 12, 'LineWidth', 1.0);
+        xlabel(ax2, '$|k| / k_p$', 'Interpreter', 'latex', 'FontSize', 13);
+        ylabel(ax2, 'Amplitude (log)', 'Interpreter', 'tex', 'FontSize', 13);
+        title(ax2, 'Semilog scale', 'Interpreter', 'tex', 'FontSize', 13, 'FontWeight', 'normal');
+        xlim(ax2, [0, max(3, max(k_plot))]);
+
+        annotation(fig, 'textbox', [0.13 0.01 0.82 0.04], ...
+            'String', build_surface_subharmonic_footer(surface_subharmonic_compare.meta, y_vec(1)), ...
+            'Interpreter', 'tex', 'EdgeColor', 'none', 'HorizontalAlignment', 'left', ...
+            'FontName', 'Times New Roman', 'FontSize', 11);
+
+        exportgraphics(fig, fullfile(CFG.output_dir, ...
+            sprintf('OW3D_boundkinematics_surface_%s_mf12_subharmonic_spectrum_sigma_%03d_tidx_%04d.png', ...
+            var_name, sigma_idx, selected_time_index)), 'Resolution', 300);
+    end
+end
+
+if CFG.compare_mf12_subharmonic_surface && CFG.export_standard_figures && ~isempty(fieldnames(surface_subharmonic_compare))
+    for quantity_name = {'u', 'w'}
+        var_name = quantity_name{1};
+        ref_field = surface_subharmonic_compare.ow3d.(var_name);
+        mf12_field = surface_subharmonic_compare.mf12.(var_name);
+        metrics = compare_series_metrics(ref_field, mf12_field);
+        y_limits_pair = compute_pairwise_ylimits({ref_field}, {mf12_field});
+        y_limits_diff = compute_pairwise_ylimits({ref_field - mf12_field}, {zeros(size(ref_field))});
+
+        fig = create_publishable_figure([140 110 1450 760]);
+        tile = tiledlayout(fig, 2, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
+        title(tile, sprintf('Surface %s second subharmonic: OW3D vs MF12 (\\sigma = %.3f, t index = %d, t = %.4f s)', ...
+            quantity_display_name(var_name), sigma_value, selected_time_index, t_selected), ...
+            'Interpreter', 'tex', 'FontSize', 16, 'FontWeight', 'bold');
+
+        ax1 = nexttile(tile);
+        draw_comparison_panel(ax1, x_plot, ref_field, mf12_field, 'Subharmonic comparison', ...
+            y_limits_pair(1, :), quantity_axis_label(var_name), x_limits, 'OW3D', 'MF12');
+        text(ax1, 0.02, 0.92, sprintf('corr = %.3f, RMSE = %.3e, peak ratio = %.3f', ...
+            metrics.corr, metrics.rmse, metrics.peak_ratio), ...
+            'Units', 'normalized', 'VerticalAlignment', 'top', ...
+            'BackgroundColor', 'w', 'Margin', 2, 'FontSize', 10);
+
+        ax2 = nexttile(tile);
+        draw_difference_panel(ax2, x_plot, ref_field - mf12_field, ...
+            'Difference (OW3D - MF12)', y_limits_diff(1, :), quantity_axis_label(var_name), x_limits);
+
+        annotation(fig, 'textbox', [0.13 0.01 0.82 0.04], ...
+            'String', build_surface_subharmonic_footer(surface_subharmonic_compare.meta, y_vec(1)), ...
+            'Interpreter', 'tex', 'EdgeColor', 'none', 'HorizontalAlignment', 'left', ...
+            'FontName', 'Times New Roman', 'FontSize', 11);
+
+        exportgraphics(fig, fullfile(CFG.output_dir, ...
+            sprintf('OW3D_boundkinematics_surface_%s_mf12_subharmonic_sigma_%03d_tidx_%04d.png', ...
+            var_name, sigma_idx, selected_time_index)), 'Resolution', 300);
+    end
+end
 
 disp('OW3D bound-kinematics postprocessing complete.');
 
 % -------------------- Local helper functions -----------------------------
 function setup_vwa_surface_paths()
     helper_dir = fullfile(fileparts(mfilename('fullpath')), 'test functions for VWA Opensource');
+    mf12_dir = fullfile(fileparts(mfilename('fullpath')), 'irregularWavesMF12', 'Source');
     if ~isfolder(helper_dir)
         error('Missing VWA helper directory: %s', helper_dir);
     end
+    if ~isfolder(mf12_dir)
+        error('Missing MF12 helper directory: %s', mf12_dir);
+    end
     addpath(helper_dir);
+    addpath(mf12_dir);
 end
 
 function out = compute_surface_vwa_quantity_dispatch(quantity_name, eta11, x_vec, depth, gravity, small_kd_cutoff, kp)
@@ -991,6 +1118,91 @@ function out = approximate_surface_phit_bulk_like(eta11, x_vec, depth, gravity, 
         'phit3_term_d', phit3_term_d);
 end
 
+function out = compute_mf12_second_subharmonic_surface(eta11, x_vec, depth, gravity, energy_keep)
+    eta11 = eta11(:);
+    x_vec = x_vec(:);
+    nx = numel(x_vec);
+
+    if nx < 2
+        error('MF12 second-order surface calculation requires at least two x-points.');
+    end
+
+    dx = x_vec(2) - x_vec(1);
+    kx_grid = vwa_kxgrid_local(nx, dx);
+    eta_hat = fft(eta11) / nx;
+
+    if mod(nx, 2) == 0
+        positive_idx = 2:(nx / 2);
+    else
+        positive_idx = 2:((nx + 1) / 2);
+    end
+
+    positive_idx = positive_idx(abs(eta_hat(positive_idx)) > 1e-12 * max(abs(eta_hat)));
+    positive_idx = select_energy_dominant_indices_local(eta_hat, positive_idx, energy_keep);
+
+    out = struct();
+    if isempty(positive_idx)
+        out.u = zeros(nx, 1);
+        out.w = zeros(nx, 1);
+        out.phi = zeros(nx, 1);
+        out.eta = zeros(nx, 1);
+        out.linear_indices = [];
+        out.energy_keep = energy_keep;
+        return;
+    end
+
+    kx = kx_grid(positive_idx).';
+    ky = zeros(size(kx));
+    a = 2 * real(eta_hat(positive_idx)).';
+    b = 2 * imag(eta_hat(positive_idx)).';
+
+    coeffs2 = mf12_direct_coefficients(2, gravity, depth, a, b, kx, ky, 0, 0, 0);
+    [eta20, phi20, u20, ~, w20] = mf12_second_subharmonic_kinematics(coeffs2, x_vec.', 0, 0, 0);
+
+    out.eta = eta20(:);
+    out.u = u20(:);
+    out.w = w20(:);
+    out.phi = phi20(:);
+    out.linear_indices = positive_idx(:);
+    out.energy_keep = energy_keep;
+end
+
+function field_out = lowpass_wavenumber_component_local(field_in, x_vec, k_cutoff, transition)
+    field_in = field_in(:);
+    x_vec = x_vec(:);
+    nx = numel(field_in);
+    dx = x_vec(2) - x_vec(1);
+    dkx = 2 * pi / (nx * dx);
+    kx = [0:ceil(nx / 2) - 1, -floor(nx / 2):-1]' * dkx;
+    mask = exp(-(abs(kx) / max(transition, dkx)).^4);
+    mask(abs(kx) <= k_cutoff) = 1;
+    field_out = real(ifft(fft(field_in) .* mask));
+end
+
+function keep_idx = select_energy_dominant_indices_local(spectrum, candidate_idx, energy_keep)
+    if nargin < 3 || isempty(energy_keep)
+        energy_keep = 1.0;
+    end
+
+    energy_keep = min(max(energy_keep, 0), 1);
+    if isempty(candidate_idx)
+        keep_idx = candidate_idx;
+        return;
+    end
+
+    spectral_energy = abs(spectrum(candidate_idx)).^2;
+    total_energy = sum(spectral_energy);
+    if total_energy <= 0 || energy_keep >= 1
+        keep_idx = candidate_idx;
+        return;
+    end
+
+    [sorted_energy, order] = sort(spectral_energy, 'descend');
+    cumulative_energy = cumsum(sorted_energy) / total_energy;
+    cutoff_idx = find(cumulative_energy >= energy_keep, 1, 'first');
+    keep_idx = sort(candidate_idx(order(1:cutoff_idx)));
+end
+
 function [coeff, phase_type] = surface_quantity_transfer_coeff(quantity_name, order, k_abs, depth, gravity, small_kd_cutoff)
     if ismember(lower(quantity_name), {'u', 'w'})
         [coeff, phase_type] = vwa_surface_quantity_coeff(quantity_name, order, k_abs, depth, gravity, small_kd_cutoff);
@@ -1116,10 +1328,17 @@ function kx = vwa_kxgrid_local(nx, dx)
     kx = (dk * [kpos, kneg]).';
 end
 
-function draw_comparison_panel(ax, x_plot, y_ow3d, y_vwa, panel_title, y_limits, y_label, x_limits)
+function draw_comparison_panel(ax, x_plot, y_ow3d, y_vwa, panel_title, y_limits, y_label, x_limits, label_a, label_b)
+    if nargin < 9 || isempty(label_a)
+        label_a = 'OW3D';
+    end
+    if nargin < 10 || isempty(label_b)
+        label_b = 'VWA-like';
+    end
+
     h1 = plot(ax, x_plot, y_ow3d, 'Color', [0.10 0.10 0.10], 'LineWidth', 1.8, 'DisplayName', 'OW3D');
     hold(ax, 'on');
-    h2 = plot(ax, x_plot, y_vwa, '--', 'Color', [0.82 0.24 0.14], 'LineWidth', 1.8, 'DisplayName', 'VWA-like');
+    h2 = plot(ax, x_plot, y_vwa, '--', 'Color', [0.82 0.24 0.14], 'LineWidth', 1.8, 'DisplayName', label_b);
     yline(ax, 0, '-', 'Color', [0.45 0.45 0.45], 'LineWidth', 0.9, 'HandleVisibility', 'off');
     hold(ax, 'off');
     grid(ax, 'on');
@@ -1137,7 +1356,85 @@ function draw_comparison_panel(ax, x_plot, y_ow3d, y_vwa, panel_title, y_limits,
     xlabel(ax, '$x / \lambda$', 'Interpreter', 'latex', 'FontSize', 13);
     ylabel(ax, y_label, 'Interpreter', 'latex', 'FontSize', 13);
     title(ax, panel_title, 'Interpreter', 'tex', 'FontSize', 13, 'FontWeight', 'normal');
-    legend(ax, [h1, h2], {'OW3D', 'VWA-like'}, 'Location', 'best', 'FontSize', 10);
+    h1.DisplayName = label_a;
+    h2.DisplayName = label_b;
+    legend(ax, [h1, h2], {label_a, label_b}, 'Location', 'best', 'FontSize', 10);
+end
+
+function draw_difference_panel(ax, x_plot, y_diff, panel_title, y_limits, y_label, x_limits)
+    plot(ax, x_plot, y_diff, 'Color', [0.12 0.39 0.71], 'LineWidth', 1.8, 'HandleVisibility', 'off');
+    hold(ax, 'on');
+    yline(ax, 0, '-', 'Color', [0.45 0.45 0.45], 'LineWidth', 0.9, 'HandleVisibility', 'off');
+    hold(ax, 'off');
+    grid(ax, 'on');
+    box(ax, 'on');
+    ax.LineWidth = 1.0;
+    ax.FontName = 'Times New Roman';
+    ax.FontSize = 12;
+    ax.TickDir = 'out';
+    ax.TickLength = [0.012 0.012];
+    ax.GridAlpha = 0.14;
+    ax.GridColor = [0 0 0];
+    ax.Layer = 'top';
+    xlim(ax, x_limits);
+    ylim(ax, y_limits);
+    xlabel(ax, '$x / \lambda$', 'Interpreter', 'latex', 'FontSize', 13);
+    ylabel(ax, y_label, 'Interpreter', 'latex', 'FontSize', 13);
+    title(ax, panel_title, 'Interpreter', 'tex', 'FontSize', 13, 'FontWeight', 'normal');
+end
+
+function metrics = compare_series_metrics(reference, candidate)
+    reference = reference(:);
+    candidate = candidate(:);
+    metrics = struct('corr', NaN, 'rmse', NaN, 'peak_ratio', NaN);
+
+    if isempty(reference) || isempty(candidate)
+        return;
+    end
+
+    if ~(all(abs(reference) < eps) || all(abs(candidate) < eps))
+        cc = corrcoef(reference, candidate);
+        metrics.corr = cc(1, 2);
+    end
+    metrics.rmse = sqrt(mean((reference - candidate).^2));
+
+    ref_peak = max(abs(reference));
+    if ref_peak > eps
+        metrics.peak_ratio = max(abs(candidate)) / ref_peak;
+    end
+end
+
+function [k_plot, amp_a, amp_b] = compute_one_sided_spectrum(field_a, field_b, x_vec, kp)
+    field_a = field_a(:);
+    field_b = field_b(:);
+    x_vec = x_vec(:);
+    nx = numel(x_vec);
+    dx = x_vec(2) - x_vec(1);
+    kx = vwa_kxgrid_local(nx, dx);
+
+    fft_a = fft(field_a) / nx;
+    fft_b = fft(field_b) / nx;
+
+    if mod(nx, 2) == 0
+        positive_idx = 1:(nx / 2 + 1);
+    else
+        positive_idx = 1:((nx + 1) / 2);
+    end
+
+    k_plot = abs(kx(positive_idx)) / kp;
+    amp_a = abs(fft_a(positive_idx));
+    amp_b = abs(fft_b(positive_idx));
+
+    if numel(positive_idx) > 2
+        amp_a(2:end-1) = 2 * amp_a(2:end-1);
+        amp_b(2:end-1) = 2 * amp_b(2:end-1);
+    end
+end
+
+function footer = build_surface_subharmonic_footer(meta, y_value)
+    footer = sprintf(['OW3D reference: four-phase mean + low-pass. MF12 input: reconstructed $\\eta^{(1)}$. ' ...
+        '$|k|<%.2f k_p$, transition = %.2f k_p, retained linear components = %d, y = %.4f m.'], ...
+        meta.cutoff / meta.kp, meta.transition / meta.kp, meta.linear_component_count, y_value);
 end
 
 function x_limits = resolve_plot_xlim(x_plot, eta11, plot_window_lambda)

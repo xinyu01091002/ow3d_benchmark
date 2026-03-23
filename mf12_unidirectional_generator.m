@@ -1,6 +1,6 @@
 % mf12_unidirectional_generator.m
 % Generate third-order unidirectional wave-group initial conditions for OceanWave3D
-% using the bundled MF12 direct reconstruction interface.
+% using the bundled MF12 spectral reconstruction interface.
 
 clc;
 clear;
@@ -20,8 +20,8 @@ CFG.paired_kd_alpha_cases = true; % If true, use (kd_i, Alpha_i) pairs instead o
 
 % -------------------- Unidirectional spectrum --------------------
 CFG.kw_left = 0.004606;
-CFG.max_components = 150;
-CFG.energy_keep_frac = 0.999;
+CFG.max_components = 300;
+CFG.energy_keep_frac = 0.99999;
 
 % -------------------- Domain / timing --------------------
 CFG.t_init_periods = -20; % Initial-condition time relative to focus in units of Tp.
@@ -33,13 +33,13 @@ CFG.Nx = 4097; % Number of x-grid points written to OW3D.init.
 CFG.focus_x_fraction = 0.5; % Focus point as a fraction of Lx.
 
 % -------------------- Output --------------------
-CFG.output_dir = fullfile('uni initial condition', 'ow3d_kinematics_check2');
+CFG.output_dir = fullfile('uni initial condition', 'ow3d_kinematics_check3');
 CFG.store_surface_stride = 8; % Section 8 surface output only. 1 saves every step, 2 every second step, etc.
 CFG.surface_format = 1; % Keep the existing OW3D surface-output format used in this project.
 CFG.enable_ow3d_kinematics = true; % Section 8 OW3D kinematics output.
 CFG.ow3d_kinematics_flag = 20; % Use OW3D kinematics-plane output mode described in Explanation_SettingsFile.txt.
 CFG.ow3d_kinematics_nfiles = 1; % Number of OW3D kinematics planes to request.
-CFG.ow3d_kinematics_tstride = 1; % Save kinematics every this many time steps.
+CFG.ow3d_kinematics_tstride = 8; % Save kinematics every this many time steps.
 CFG.batch_purpose = 'Generate unidirectional OW3D initial conditions with OW3D kinematics output enabled in the settings file for downstream surface-kinematics checks.';
 CFG.batch_notes = [ ...
     "This batch is intended to provide one OW3D-ready subdirectory per unidirectional test case with OW3D kinematics storage enabled."; ...
@@ -53,6 +53,10 @@ Lx = CFG.Lx_lambda * lambda_p;
 dx = Lx / (CFG.Nx - 1);
 x = (0:CFG.Nx-1) * dx;
 y = 0;
+% mf12_spectral_surface reconstructs on an FFT grid using dx = Lx / Nx.
+% Use an evaluation length that reproduces the historical x samples above.
+Lx_eval = dx * CFG.Nx;
+Ly_eval = 1;
 
 fprintf('MF12 unidirectional generator\n');
 fprintf('Domain: Lx=%.3f m, Nx=%d\n', Lx, CFG.Nx);
@@ -96,7 +100,7 @@ for pair_idx = 1:size(kd_alpha_pairs, 1)
     x_focus = CFG.focus_x_fraction * Lx;
 
     for Akp = Akp_list
-        [a, b, kx, ky, meta] = build_unidirectional_spectrum(CFG, Akp, Alpha, h, x_focus);
+        [a, b, kx, ky, meta] = build_unidirectional_spectrum(CFG, Akp, Alpha, h, x_focus, Lx_eval);
 
         fprintf('kd=%.2f, Akp=%.3f, Alpha=%.1f: retained %d components\n', ...
             kd, Akp, Alpha, numel(kx));
@@ -106,8 +110,8 @@ for pair_idx = 1:size(kd_alpha_pairs, 1)
             a_shift = a * cos(phase_shift) - b * sin(phase_shift);
             b_shift = a * sin(phase_shift) + b * cos(phase_shift);
 
-            coeffs = mf12_direct_coefficients(3, CFG.g, h, a_shift, b_shift, kx, ky, 0, 0);
-            [eta, phi_surface] = mf12_direct_surface(3, coeffs, x, y, t_eval);
+            coeffs = mf12_spectral_coefficients(3, CFG.g, h, a_shift, b_shift, kx, ky, 0, 0);
+            [eta, phi_surface] = mf12_spectral_surface(coeffs, Lx_eval, Ly_eval, CFG.Nx, 1, t_eval);
 
             eta = eta(:);
             phi_surface = phi_surface(:);
@@ -142,9 +146,11 @@ function setup_mf12_paths()
     addpath(source_dir);
 end
 
-function [a, b, kx, ky, meta] = build_unidirectional_spectrum(CFG, Akp, Alpha, h, x_focus)
-    kx_dense = linspace(CFG.kp / 400, 10 * CFG.kp, max(800, 4 * CFG.max_components));
-    dk = kx_dense(2) - kx_dense(1);
+function [a, b, kx, ky, meta] = build_unidirectional_spectrum(CFG, Akp, Alpha, h, x_focus, Lx_eval)
+    % Match the retained linear components to the FFT grid used by
+    % mf12_spectral_surface to avoid spectral leakage and packet splitting.
+    dk = 2 * pi / Lx_eval;
+    kx_dense = (1:floor((CFG.Nx - 1) / 2)) * dk;
 
     kw_right = sqrt(CFG.kp^2 / (2 * log(10^Alpha)));
     S = zeros(size(kx_dense));
@@ -283,7 +289,7 @@ function write_batch_readme(file_name, CFG, Lx, dx)
     fprintf(f, '\n');
 
     fprintf(f, 'Current workflow\n');
-    fprintf(f, '- Direct MF12 unidirectional reconstruction for each generated phase/state combination.\n');
+    fprintf(f, '- Spectral MF12 unidirectional reconstruction on an FFT-compatible k-grid for each generated phase/state combination.\n');
     if CFG.enable_ow3d_kinematics
         fprintf(f, '- OW3D Section 8 is configured to save both surface output and one kinematics plane per case.\n');
         fprintf(f, '- The requested kinematics plane spans the full x-range at the only y-index of the unidirectional setup.\n');

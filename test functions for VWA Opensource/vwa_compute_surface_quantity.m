@@ -54,20 +54,21 @@ function out = vwa_compute_surface_quantity(eta11, x, d, g, quantity_name, opts)
 
     kx = vwa_kxgrid(Nx, dx);
     eta_plus = vwa_analytic_x(eta11, opts.analytic_side);
-    eta_hat = fft(eta_plus, [], 1);
+    eta_hat = fft(eta11, [], 1);
 
     out = struct();
     for order = 1:3
         [coeff, phase_type] = vwa_surface_quantity_coeff(quantity_name, order, abs(kx), d, g, opts.small_kd_min);
         kappa = ifft(eta_hat .* reshape(coeff, [], 1), [], 1);
+        kappa_plus = vwa_analytic_x(kappa, opts.analytic_side);
 
         switch order
             case 1
-                field = kappa;
+                field = kappa_plus;
             case 2
-                field = eta_plus .* kappa;
+                field = eta_plus .* kappa_plus;
             case 3
-                field = (eta_plus .^ 2) .* kappa;
+                field = (eta_plus .^ 2) .* kappa_plus;
         end
 
         out.(sprintf('order%d', order)) = vwa_apply_phase_operator(field, phase_type);

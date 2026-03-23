@@ -20,6 +20,10 @@ config.apply_eta11_filter = false;
 config.sigma_mode = 'surface'; % 'surface' or 'index'
 config.sigma_index = [];
 config.y_index = 1;
+config.compare_mf12_subharmonic = true;
+config.subharmonic_cutoff_factor = 1.0;
+config.subharmonic_transition_factor = 0.35;
+config.mf12_linear_energy_keep = 0.99;
 
 snapshot_path = resolve_snapshot_path(raw_dir, config.snapshot_tag);
 fprintf('Loading raw kinematics snapshot from: %s\n', snapshot_path);
@@ -53,9 +57,10 @@ w_phases = zeros(numel(phase_names), numel(x_vec));
 
 for idx = 1:numel(phase_names)
     snapshot = raw_snapshot.(phase_names{idx});
-    eta_phases(idx, :) = squeeze(snapshot.eta(:, config.y_index));
-    u_slice = squeeze(snapshot.u(sigma_idx, :, config.y_index));
-    w_slice = squeeze(snapshot.w(sigma_idx, :, config.y_index));
+    eta_slice = squeeze(snapshot.eta(config.y_index, :));
+    u_slice = squeeze(snapshot.u(sigma_idx, :));
+    w_slice = squeeze(snapshot.w(sigma_idx, :));
+    eta_phases(idx, :) = eta_slice(:).';
     u_phases(idx, :) = u_slice(:).';
     w_phases(idx, :) = w_slice(:).';
 end
@@ -84,6 +89,26 @@ x_plot = (x_vec - 0.5 * (x_vec(1) + x_vec(end))) / config.lambda;
 export_surface_velocity_compare(export_folder, x_plot, 'u', u_h, u_vwa, sigma_vec(sigma_idx), raw_meta.time_value);
 export_surface_velocity_compare(export_folder, x_plot, 'w', w_h, w_vwa, sigma_vec(sigma_idx), raw_meta.time_value);
 
+if config.compare_mf12_subharmonic
+    addpath(fullfile(project_dir, 'irregularWavesMF12', 'Source'));
+
+    subharmonic_cutoff = config.subharmonic_cutoff_factor * kp;
+    ow3d_u20 = lowpass_wavenumber_component_local(mean(u_phases, 1).', x_vec, subharmonic_cutoff, ...
+        config.subharmonic_transition_factor * subharmonic_cutoff);
+    ow3d_w20 = lowpass_wavenumber_component_local(mean(w_phases, 1).', x_vec, subharmonic_cutoff, ...
+        config.subharmonic_transition_factor * subharmonic_cutoff);
+
+    eta_linear_for_mf12 = eta_h(1, :).';
+    mf12_sub = compute_mf12_second_order_filtered_surface(eta_linear_for_mf12, x_vec, depth_value, ...
+        config.gravity, subharmonic_cutoff, config.subharmonic_transition_factor * subharmonic_cutoff, ...
+        config.mf12_linear_energy_keep);
+
+    export_subharmonic_compare(export_folder, x_plot, 'u', ow3d_u20, mf12_sub.u20, sigma_vec(sigma_idx), ...
+        raw_meta.time_value, subharmonic_cutoff / kp, 'MF12');
+    export_subharmonic_compare(export_folder, x_plot, 'w', ow3d_w20, mf12_sub.w20, sigma_vec(sigma_idx), ...
+        raw_meta.time_value, subharmonic_cutoff / kp, 'MF12');
+end
+
 disp('Surface velocity VWA comparison complete.');
 
 %% Local helper functions
@@ -94,12 +119,13 @@ function h = reconstruct_harmonics_1d_local(phase_data, coef)
         error('Need exactly four phase-shifted inputs for the harmonic reconstruction.');
     end
 
+    analytic_part = hilbert(phase_data.').';
+    all_fields = zeros(8, nx);
+    all_fields(1:2:end, :) = real(phase_data);
+    all_fields(2:2:end, :) = -imag(analytic_part);
     h = zeros(4, nx);
-    for ix = 1:nx
-        y = phase_data(:, ix);
-        analytic_part = imag(hilbert(y));
-        state = [y(1); analytic_part(1); y(2); analytic_part(2); y(3); analytic_part(3); y(4); analytic_part(4)];
-        h(:, ix) = coef * state;
+    for n = 1:4
+        h(n, :) = coef(n, :) * all_fields;
     end
 end
 
@@ -115,6 +141,121 @@ function eta_filtered = frequency_filtering_1d_local(eta, x, kp, order)
     mask = abs(abs(k) - order * kp) <= band;
     spectrum(~mask) = 0;
     eta_filtered = real(ifft(ifftshift(spectrum)));
+end
+
+function out = compute_mf12_second_order_filtered_surface(eta11, x_vec, h, g, k_cutoff, transition, energy_keep)
+    eta11 = eta11(:);
+    x_vec = x_vec(:);
+    nx = numel(x_vec);
+    dx = x_vec(2) - x_vec(1);
+    kx_grid = vwa_kxgrid(nx, dx);
+    fft_eta = fft(eta11) / nx;
+
+    if mod(nx, 2) == 0
+        positive_idx = 2:(nx / 2);
+    else
+        positive_idx = 2:((nx + 1) / 2);
+    end
+
+    positive_idx = positive_idx(abs(fft_eta(positive_idx)) > 1e-12 * max(abs(fft_eta)));
+    positive_idx = select_energy_dominant_indices_local(fft_eta, positive_idx, energy_keep);
+    kx = kx_grid(positive_idx).';
+    ky = zeros(size(kx));
+    a = 2 * real(fft_eta(positive_idx)).';
+    b = 2 * imag(fft_eta(positive_idx)).';
+
+    coeffs1 = mf12_direct_coefficients(1, g, h, a, b, kx, ky, 0, 0, 0);
+    coeffs2 = mf12_direct_coefficients(2, g, h, a, b, kx, ky, 0, 0, 0);
+
+    [u1, ~, w1, ~, phi1] = kinematicsMF12(1, coeffs1, x_vec.', 0, 0, 0); %#ok<ASGLU>
+    [u2, ~, w2, ~, phi2] = kinematicsMF12(2, coeffs2, x_vec.', 0, 0, 0); %#ok<ASGLU>
+
+    theta = coeffs1.omega(:) .* 0 - coeffs1.kx(:) .* x_vec.' - coeffs1.ky(:) .* 0;
+    eta1_matrix = coeffs1.a(:) .* cos(theta) + coeffs1.b(:) .* sin(theta);
+    eta1 = sum(eta1_matrix, 1).';
+
+    theta2 = 2 * coeffs2.omega(:) .* 0 - coeffs2.kx_2(:) .* x_vec.' - coeffs2.ky_2(:) .* 0;
+    eta2_self = sum(coeffs2.G_2(:) .* (coeffs2.A_2(:) .* cos(theta2) + coeffs2.B_2(:) .* sin(theta2)), 1).';
+
+    eta2_pair = zeros(nx, 1);
+    cnm = 0;
+    for n = 1:coeffs2.N
+        for m = (n + 1):coeffs2.N
+            for pm = [1 -1]
+                cnm = cnm + 1;
+                theta_npm = coeffs2.omega_npm(cnm) .* 0 - coeffs2.kx_npm(cnm) .* x_vec - coeffs2.ky_npm(cnm) .* 0;
+                eta2_pair = eta2_pair + coeffs2.G_npm(cnm) .* ...
+                    (coeffs2.A_npm(cnm) .* cos(theta_npm) + coeffs2.B_npm(cnm) .* sin(theta_npm));
+            end
+        end
+    end
+
+    eta20 = (eta2_self + eta2_pair);
+    phi20 = phi2(:) - phi1(:);
+    u20 = u2(:) - u1(:);
+    w20 = w2(:) - w1(:);
+
+    eta20 = lowpass_wavenumber_component_local(eta20, x_vec, k_cutoff, transition);
+    phi20 = lowpass_wavenumber_component_local(phi20, x_vec, k_cutoff, transition);
+    u20 = lowpass_wavenumber_component_local(u20, x_vec, k_cutoff, transition);
+    w20 = lowpass_wavenumber_component_local(w20, x_vec, k_cutoff, transition);
+
+    out = struct();
+    out.eta20 = eta20(:);
+    out.phi20 = phi20(:);
+    out.u20 = u20(:);
+    out.w20 = w20(:);
+    out.coeffs1 = coeffs1;
+    out.coeffs2 = coeffs2;
+    out.linear_indices = positive_idx(:);
+    out.linear_energy_keep = energy_keep;
+end
+
+function field_out = lowpass_wavenumber_component_local(field_in, x_vec, k_cutoff, transition)
+    field_in = field_in(:);
+    x_vec = x_vec(:);
+    nx = numel(field_in);
+    dx = x_vec(2) - x_vec(1);
+    dkx = 2 * pi / (nx * dx);
+    kx = [0:ceil(nx / 2) - 1, -floor(nx / 2):-1]' * dkx;
+    mask = exp(-(abs(kx) / max(transition, dkx)).^4);
+    mask(abs(kx) <= k_cutoff) = 1;
+    field_out = real(ifft(fft(field_in) .* mask));
+end
+
+function field_out = bandpass_harmonic_component_local(field_in, x_vec, k_center, k_sigma)
+    field_in = field_in(:);
+    x_vec = x_vec(:);
+    nx = numel(field_in);
+    dx = x_vec(2) - x_vec(1);
+    dkx = 2 * pi / (nx * dx);
+    kx = [0:ceil(nx / 2) - 1, -floor(nx / 2):-1]' * dkx;
+    mask = exp(-((abs(kx) - k_center).^2) / (2 * k_sigma^2));
+    field_out = real(ifft(fft(field_in) .* mask));
+end
+
+function keep_idx = select_energy_dominant_indices_local(fft_eta, candidate_idx, energy_keep)
+    if nargin < 3 || isempty(energy_keep)
+        energy_keep = 1.0;
+    end
+    energy_keep = min(max(energy_keep, 0), 1);
+    if isempty(candidate_idx)
+        keep_idx = candidate_idx;
+        return;
+    end
+
+    spectral_energy = abs(fft_eta(candidate_idx)).^2;
+    total_energy = sum(spectral_energy);
+    if total_energy <= 0 || energy_keep >= 1
+        keep_idx = candidate_idx;
+        return;
+    end
+
+    [sorted_energy, order] = sort(spectral_energy, 'descend');
+    cumulative_energy = cumsum(sorted_energy) / total_energy;
+    cutoff_pos = find(cumulative_energy >= energy_keep, 1, 'first');
+    keep_unsorted = candidate_idx(order(1:cutoff_pos));
+    keep_idx = sort(keep_unsorted);
 end
 
 function export_surface_velocity_compare(export_folder, x_plot, quantity_name, ow3d_h, vwa_out, sigma_value, time_value)
@@ -162,6 +303,44 @@ function export_surface_velocity_compare(export_folder, x_plot, quantity_name, o
         'FontName', 'Times New Roman', 'FontSize', 10);
 
     exportgraphics(fig, fullfile(export_folder, sprintf('comparison_surface_%s.png', lower(quantity_name))), ...
+        'Resolution', 300);
+end
+
+function export_subharmonic_compare(export_folder, x_plot, quantity_name, ow3d_sub, model_sub, sigma_value, time_value, cutoff_ratio, model_name)
+    fig = figure('Color', 'w', 'Position', [80 80 1450 720]);
+    tile = tiledlayout(fig, 2, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
+    title(tile, sprintf('Second subharmonic surface %s: OW3D vs %s (\\sigma = %.3f, t = %.4f s, |k| < %.2f k_p)', ...
+        quantity_name, model_name, sigma_value, time_value, cutoff_ratio), ...
+        'Interpreter', 'tex', 'FontSize', 16, 'FontWeight', 'bold');
+
+    ax1 = nexttile(tile);
+    plot(ax1, x_plot, ow3d_sub, 'k-', 'LineWidth', 1.6, 'DisplayName', 'OW3D'); hold(ax1, 'on');
+    plot(ax1, x_plot, model_sub, '--', 'Color', [0.80 0.26 0.18], 'LineWidth', 1.6, 'DisplayName', model_name);
+    grid(ax1, 'on'); box(ax1, 'on');
+    ylabel(ax1, quantity_axis_label_local(quantity_name), 'Interpreter', 'latex', 'FontSize', 12);
+    title(ax1, 'Subharmonic comparison', 'Interpreter', 'tex', 'FontSize', 13);
+    set(ax1, 'FontName', 'Times New Roman', 'FontSize', 12, 'LineWidth', 1.0);
+    xlim(ax1, [min(x_plot), max(x_plot)]);
+    ylim(ax1, paired_ylim_local(ow3d_sub, model_sub));
+    legend(ax1, 'Location', 'best');
+
+    metrics = compare_metrics_local(ow3d_sub, model_sub);
+    text(ax1, 0.02, 0.92, sprintf('corr = %.3f, RMSE = %.3e, peak ratio = %.3f', ...
+        metrics.corr, metrics.rmse, metrics.peak_ratio), ...
+        'Units', 'normalized', 'VerticalAlignment', 'top', ...
+        'BackgroundColor', 'w', 'Margin', 2, 'FontSize', 10);
+
+    ax2 = nexttile(tile);
+    plot(ax2, x_plot, ow3d_sub - model_sub, '-', 'Color', [0.12 0.39 0.71], 'LineWidth', 1.6);
+    grid(ax2, 'on'); box(ax2, 'on');
+    xlabel(ax2, '$x / \lambda$', 'Interpreter', 'latex', 'FontSize', 12);
+    ylabel(ax2, quantity_axis_label_local(quantity_name), 'Interpreter', 'latex', 'FontSize', 12);
+    title(ax2, sprintf('Difference (OW3D - %s)', model_name), 'Interpreter', 'tex', 'FontSize', 13);
+    set(ax2, 'FontName', 'Times New Roman', 'FontSize', 12, 'LineWidth', 1.0);
+    xlim(ax2, [min(x_plot), max(x_plot)]);
+    ylim(ax2, paired_ylim_local(ow3d_sub - model_sub, zeros(size(ow3d_sub))));
+
+    exportgraphics(fig, fullfile(export_folder, sprintf('comparison_%s_subharmonic_%s.png', lower(model_name), lower(quantity_name))), ...
         'Resolution', 300);
 end
 
