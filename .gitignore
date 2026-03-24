@@ -1,10 +1,15 @@
 cpp/build/
 cpp/build_verify/
-
+OceanWave3D-Fortran90-master/
 # OW3D large binary outputs
 Kinematics*.bin
 EP_*.bin
 *.zip
+LOG.txt
+*.end
+fort*
+bathymetry.chk
+local.smoothing
 
 # Generated postprocessing outputs
 processed_boundkinematics/

@@ -15,8 +15,8 @@ close all;
 CFG = struct();
 
 % -------------------- User configuration --------------------
-CFG.data_root = fullfile(pwd, 'uni initial condition', 'ow3d_kinematics_check');
-CFG.folder_pattern = 'T_init-20_Tp_Alpha_1.0_Akp_006_kd1.0_phi_%d';
+CFG.data_root = fullfile(pwd, 'uni initial condition', 'ow3d_kinematics_check3');
+CFG.folder_pattern = 'T_init-20_Tp_Alpha_5.0_Akp_006_kd8.0_phi_%d';
 CFG.phi_shifts_deg = 0:90:270;
 CFG.kinematics_file_id = 1; % Kinematics01.bin
 CFG.phit_mode = 'uncorrected'; % 'uncorrected' -> Dt*phi, 'sigma_corrected' -> Dt*phi - w*sigma*etat
@@ -24,12 +24,13 @@ CFG.time_index = []; % [] -> use default near-final frame. Positive -> index fro
 CFG.default_time_index_from_end = 160; % Used only when time_index = [].
 CFG.lambda = 225;
 CFG.gravity = 9.81;
+CFG.kp_depth = 0.0279; % Use h = kd / kp with kd parsed from CFG.folder_pattern.
 CFG.variables_to_process = {'u', 'w', 'phi'};
 CFG.apply_x_filter = true;
 CFG.sigma_mode = 'surface'; % 'surface', 'index', or 'value'
 CFG.sigma_index = [];
 CFG.sigma_value = 0.0;
-CFG.save_raw_mat = true;
+CFG.save_raw_mat = false;
 CFG.save_processed_mat = false;
 CFG.vwa_surface_compare_variables = {'u', 'w'};
 CFG.apply_vwa_eta11_filter = false;
@@ -39,7 +40,7 @@ CFG.compare_mf12_subharmonic_surface = true;
 CFG.mf12_linear_energy_keep = 0.9999;
 CFG.mf12_subharmonic_cutoff_factor = 1.2;
 CFG.mf12_subharmonic_transition_factor = 1.2;
-CFG.export_standard_figures = false;
+CFG.export_standard_figures = true;
 CFG.export_subharmonic_spectrum_figures = true;
 CFG.output_dir = fullfile(pwd, 'processed_boundkinematics');
 
@@ -82,9 +83,13 @@ y_vec = ref.y(1, :);
 sigma_vec = ref.sigma(:);
 t_vec = ref.t(:);
 t_selected = t_vec(selected_time_index);
+case_kd = extract_kd_from_case_pattern(CFG.folder_pattern);
+depth_value = case_kd / CFG.kp_depth;
 
 fprintf('Using kinematics time index %d of %d (t = %.6f s)\n', ...
     selected_time_index, numel(t_vec), t_selected);
+fprintf('Using depth h = %.6f m from kd = %.4f and kp = %.4f 1/m\n', ...
+    depth_value, case_kd, CFG.kp_depth);
 
 % -------------------- Save raw snapshot before postprocessing ----------- 
 if ~isfolder(CFG.output_dir)
@@ -101,6 +106,10 @@ raw_meta.time_index = selected_time_index;
 raw_meta.time_value = t_selected;
 raw_meta.lambda = CFG.lambda;
 raw_meta.gravity = CFG.gravity;
+raw_meta.kd = case_kd;
+raw_meta.kp_depth = CFG.kp_depth;
+raw_meta.depth_value = depth_value;
+raw_meta.depth_source = 'h = kd / kp_depth parsed from CFG.folder_pattern';
 raw_meta.sigma = sigma_vec;
 raw_meta.x = x_vec;
 raw_meta.y = y_vec;
@@ -157,9 +166,6 @@ eta11_surface = squeeze(eta_harmonics(1, :));
 if CFG.apply_vwa_eta11_filter
     eta11_surface = frequency_filtering_1d_local(eta11_surface, x_vec, kp, 1);
 end
-h_values = ref.h(:);
-h_values = h_values(isfinite(h_values));
-depth_value = mean(h_values);
 sigma_idx = resolve_sigma_index(CFG, sigma_vec);
 sigma_value = sigma_vec(sigma_idx);
 
@@ -218,6 +224,10 @@ meta.phit_mode = CFG.phit_mode;
 meta.time_index = selected_time_index;
 meta.time_value = t_selected;
 meta.lambda = CFG.lambda;
+meta.kd = case_kd;
+meta.kp_depth = CFG.kp_depth;
+meta.depth_value = depth_value;
+meta.depth_source = 'h = kd / kp_depth parsed from CFG.folder_pattern';
 meta.sigma = sigma_vec;
 meta.x = x_vec;
 meta.y = y_vec;
@@ -1435,6 +1445,18 @@ function footer = build_surface_subharmonic_footer(meta, y_value)
     footer = sprintf(['OW3D reference: four-phase mean + low-pass. MF12 input: reconstructed $\\eta^{(1)}$. ' ...
         '$|k|<%.2f k_p$, transition = %.2f k_p, retained linear components = %d, y = %.4f m.'], ...
         meta.cutoff / meta.kp, meta.transition / meta.kp, meta.linear_component_count, y_value);
+end
+
+function kd = extract_kd_from_case_pattern(folder_pattern)
+    token = regexp(folder_pattern, 'kd(?<kd>\d+(?:\.\d+)?)', 'names', 'once');
+    if isempty(token) || ~isfield(token, 'kd')
+        error('Unable to parse kd from CFG.folder_pattern: %s', folder_pattern);
+    end
+
+    kd = str2double(token.kd);
+    if ~(isfinite(kd) && kd > 0)
+        error('Parsed invalid kd value from CFG.folder_pattern: %s', folder_pattern);
+    end
 end
 
 function x_limits = resolve_plot_xlim(x_plot, eta11, plot_window_lambda)

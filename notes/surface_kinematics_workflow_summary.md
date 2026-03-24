@@ -164,3 +164,30 @@ At the moment:
 - the third-order mismatch has been narrowed down mainly to the reduced-kernel/analytic-product side
 
 So the main outcome so far is not just a partial `u_s` model, but a reusable workflow for diagnosing and comparing reduced surface-kinematics models against OW3D references.
+
+## 11. Strict second-order `u20` note
+
+The repository now also contains a narrower diagnostic workflow in [`quick_extract_ow3d_subharmonic_velocity.m`](c:/Research/OW3D_benchmark/quick_extract_ow3d_subharmonic_velocity.m) for the strict second-order difference-frequency/subharmonic horizontal velocity.
+
+That script does four things in sequence:
+
+1. Read the four phase-shifted OW3D kinematics files with the full field order.
+2. Read the matching `EP_XXXXX.bin` snapshot with the full reader and align the `EP` x-grid to the kinematics x-grid by removing the two extra points.
+3. Reconstruct `\eta^{(1)}` from the extracted linear spectrum and verify that it matches the OW3D first-order `\eta`.
+4. Build the strict Appendix-A difference-frequency prediction `u^{(2-)}` and compare it against the OW3D-extracted subharmonic `u20`.
+
+The present diagnostic outcome is:
+
+- the first-order `\eta` reconstruction is excellent, so the linear-spectrum extraction step looks trustworthy
+- the strict Appendix-A `u^{(2-)}` implementation agrees with the existing MF12 direct difference-frequency path
+- however, the OW3D surface `u20` does not behave like the bare Appendix-A difference-frequency velocity term
+
+The main reason appears to be the OW3D surface-velocity definition itself. In the OW3D source, the stored horizontal velocity contains a sigma-coordinate chain-rule correction in addition to the constant-sigma `\phi_x` part. The decomposition tests currently indicate:
+
+- the surface subharmonic `u20` is dominated by the chain-rule correction contribution
+- the superharmonic `u2` is much closer to the bare constant-sigma `\phi_x` contribution
+
+So for subharmonic velocity, comparing the OW3D surface `u20` directly against the bare Appendix-A `u^{(2-)}` is not a like-for-like comparison. Any future theory comparison should either:
+
+- reconstruct the OW3D-style chain-rule contribution explicitly, or
+- compare at the level of a quantity whose definition matches the Appendix-A derivation more directly
