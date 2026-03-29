@@ -21,7 +21,7 @@ function mu = vwa_mu(n, k, d, g, kd_min)
 
     switch n
         case 2
-            mu = -(omega/8) .* (4 + 3*coth(kd).*csch(kd).^3);
+            mu = -(omega/8) .* (4 + 3*cosh(2*kd).*csch(kd).^4);
 
         case 3
             mu = -(k./(64*omega)) .* ( 8*g*k + omega.^2 .* coth(kd) .* ...

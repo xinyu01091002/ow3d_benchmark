@@ -25,28 +25,44 @@ CFG.default_time_index_from_end = 160; % Used only when time_index = [].
 CFG.lambda = 225;
 CFG.gravity = 9.81;
 CFG.kp_depth = 0.0279; % Use h = kd / kp with kd parsed from CFG.folder_pattern.
-CFG.variables_to_process = {'u', 'w', 'phi'};
+CFG.variables_to_process = {'u', 'phi'};
 CFG.apply_x_filter = true;
 CFG.sigma_mode = 'surface'; % 'surface', 'index', or 'value'
 CFG.sigma_index = [];
 CFG.sigma_value = 0.0;
 CFG.save_raw_mat = false;
 CFG.save_processed_mat = false;
-CFG.vwa_surface_compare_variables = {'u', 'w'};
+CFG.vwa_surface_compare_variables = {};
 CFG.apply_vwa_eta11_filter = false;
 CFG.vwa_small_kd_cutoff = 0.3;
 CFG.plot_window_lambda = 5.0;
 CFG.compare_mf12_subharmonic_surface = true;
-CFG.mf12_linear_energy_keep = 0.9999;
+CFG.mf12_linear_energy_keep = 0.99999;
 CFG.mf12_subharmonic_cutoff_factor = 1.2;
 CFG.mf12_subharmonic_transition_factor = 1.2;
+CFG.mf12_apply_surface_taylor_correction = true;
+CFG.check_linear_group_energy = false;
+CFG.export_linear_group_energy_figure = false;
+CFG.linear_group_core_band = [0.75, 1.25];
+CFG.linear_group_low_band = [0.0, 0.75];
+CFG.linear_group_high_band = [1.25, 3.0];
+CFG.linear_group_transition_low = 0.25;
+CFG.linear_group_transition_high = 0.35;
+CFG.export_general_figures = false;
 CFG.export_standard_figures = true;
 CFG.export_subharmonic_spectrum_figures = true;
 CFG.output_dir = fullfile(pwd, 'processed_boundkinematics');
+CFG.ow3d_diff_alpha = [];
+
+folder_pattern_env = getenv('OW3D_FOLDER_PATTERN');
+if ~isempty(folder_pattern_env)
+    CFG.folder_pattern = folder_pattern_env;
+end
 
 CFG.vwa_required_surface_variables = resolve_required_vwa_surface_variables(CFG.vwa_surface_compare_variables);
 CFG.process_variables = resolve_required_process_variables(CFG.variables_to_process, ...
     CFG.vwa_surface_compare_variables, CFG.vwa_required_surface_variables);
+CFG.process_variables = unique([CFG.process_variables, {'w'}], 'stable');
 
 setup_vwa_surface_paths();
 
@@ -85,11 +101,15 @@ t_vec = ref.t(:);
 t_selected = t_vec(selected_time_index);
 case_kd = extract_kd_from_case_pattern(CFG.folder_pattern);
 depth_value = case_kd / CFG.kp_depth;
+case_folder_ref = fullfile(CFG.data_root, sprintf(CFG.folder_pattern, CFG.phi_shifts_deg(1)));
+ow3d_diff_alpha = resolve_ow3d_diff_alpha(case_folder_ref, CFG.ow3d_diff_alpha);
+CFG.output_dir = fullfile(CFG.output_dir, build_case_tag_local(CFG.folder_pattern));
 
 fprintf('Using kinematics time index %d of %d (t = %.6f s)\n', ...
     selected_time_index, numel(t_vec), t_selected);
 fprintf('Using depth h = %.6f m from kd = %.4f and kp = %.4f 1/m\n', ...
     depth_value, case_kd, CFG.kp_depth);
+fprintf('Using OW3D DiffXEven alpha = %d\n', ow3d_diff_alpha);
 
 % -------------------- Save raw snapshot before postprocessing ----------- 
 if ~isfolder(CFG.output_dir)
@@ -160,6 +180,20 @@ if CFG.apply_x_filter
     end
 end
 
+% -------------------- Linear wave-group energy audit ---------------------
+linear_group_energy = struct();
+if CFG.check_linear_group_energy
+    eta11_raw = squeeze(reconstruct_harmonics_1d(eta_phases, four_phase_coef));
+    eta11_raw = eta11_raw(1, :).';
+    eta11_filtered = squeeze(eta_harmonics(1, :)).';
+    linear_group_energy = analyze_linear_group_energy_local( ...
+        eta11_raw, eta11_filtered, x_vec, kp, CFG);
+
+    fprintf('\n=== Linear wave-group energy audit ===\n');
+    print_linear_group_energy_audit_local('raw eta11', linear_group_energy.raw);
+    print_linear_group_energy_audit_local('filtered eta11', linear_group_energy.filtered);
+end
+
 % -------------------- VWA-like surface-kinematic approximation -----------
 vwa_surface = struct();
 eta11_surface = squeeze(eta_harmonics(1, :));
@@ -185,19 +219,14 @@ end
 
 surface_subharmonic_compare = struct();
 if CFG.compare_mf12_subharmonic_surface
-    if ~all(isfield(vars_phases, {'u', 'w'}))
-        error('MF12 second-subharmonic surface comparison requires u and w in vars_phases.');
+    if ~all(isfield(vars_phases, {'u', 'w', 'phi'}))
+        error('MF12 second-subharmonic surface comparison requires u, w, and phi in vars_phases.');
     end
 
     subharmonic_cutoff = CFG.mf12_subharmonic_cutoff_factor * kp;
     subharmonic_transition = CFG.mf12_subharmonic_transition_factor * subharmonic_cutoff;
-    ow3d_u_surface_mean = squeeze(mean(vars_phases.u(:, sigma_idx, :), 1));
-    ow3d_w_surface_mean = squeeze(mean(vars_phases.w(:, sigma_idx, :), 1));
-
-    surface_subharmonic_compare.ow3d.u = lowpass_wavenumber_component_local( ...
-        ow3d_u_surface_mean(:), x_vec, subharmonic_cutoff, subharmonic_transition);
-    surface_subharmonic_compare.ow3d.w = lowpass_wavenumber_component_local( ...
-        ow3d_w_surface_mean(:), x_vec, subharmonic_cutoff, subharmonic_transition);
+    surface_subharmonic_compare.ow3d = compute_ow3d_second_subharmonic_surface( ...
+        eta_phases, vars_phases, ref.h(:, 1), sigma_idx, sigma_value, x_vec, four_phase_coef, ow3d_diff_alpha);
     surface_subharmonic_compare.mf12 = compute_mf12_second_subharmonic_surface( ...
         eta11_surface(:), x_vec, depth_value, CFG.gravity, CFG.mf12_linear_energy_keep);
     surface_subharmonic_compare.meta = struct( ...
@@ -208,10 +237,16 @@ if CFG.compare_mf12_subharmonic_surface
         'transition', subharmonic_transition, ...
         'energy_keep', CFG.mf12_linear_energy_keep, ...
         'linear_component_count', numel(surface_subharmonic_compare.mf12.linear_indices), ...
-        'mf12_mode', 'difference_terms_only');
+        'mf12_mode', 'difference_terms_only', ...
+        'ow3d_u_reference', 'strict four-phase bare/phix_sigma second subharmonic', ...
+        'ow3d_w_reference', 'strict four-phase second subharmonic', ...
+        'ow3d_diff_alpha', ow3d_diff_alpha, ...
+        'ow3d_chain_mode', surface_subharmonic_compare.ow3d.selected_chain_mode, ...
+        'surface_taylor_correction', CFG.mf12_apply_surface_taylor_correction);
 
     fprintf('MF12 second subharmonic: kept %d linear components (energy keep = %.3f).\n', ...
         surface_subharmonic_compare.meta.linear_component_count, CFG.mf12_linear_energy_keep);
+    print_surface_subharmonic_diagnostics_local(surface_subharmonic_compare);
 end
 
 % -------------------- Save processed snapshot ----------------------------
@@ -234,7 +269,7 @@ meta.y = y_vec;
 
 if CFG.save_processed_mat
     save(fullfile(CFG.output_dir, sprintf('OW3D_boundkinematics_tidx_%04d.mat', selected_time_index)), ...
-        'eta_harmonics', 'var_harmonics', 'meta', 'surface_subharmonic_compare', '-v7.3');
+        'eta_harmonics', 'var_harmonics', 'meta', 'surface_subharmonic_compare', 'linear_group_energy', '-v7.3');
 end
 
 % -------------------- Visualization -------------------------------------
@@ -242,7 +277,7 @@ x_plot = (x_vec - 0.5 * (x_vec(1) + x_vec(end))) / CFG.lambda;
 x_limits = resolve_plot_xlim(x_plot, eta_harmonics(1, :), CFG.plot_window_lambda);
 line_colors = [0.10 0.10 0.10; 0.80 0.26 0.18; 0.12 0.39 0.71; 0.55 0.16 0.51];
 
-if CFG.export_standard_figures
+if CFG.export_general_figures
 for v_idx = 1:numel(CFG.variables_to_process)
     var_name = CFG.variables_to_process{v_idx};
 
@@ -329,7 +364,7 @@ end
 end
 
 if CFG.compare_mf12_subharmonic_surface && CFG.export_subharmonic_spectrum_figures && ~isempty(fieldnames(surface_subharmonic_compare))
-    for quantity_name = {'u', 'w'}
+    for quantity_name = {'u'}
         var_name = quantity_name{1};
         ref_field = surface_subharmonic_compare.ow3d.(var_name);
         mf12_field = surface_subharmonic_compare.mf12.(var_name);
@@ -374,10 +409,15 @@ if CFG.compare_mf12_subharmonic_surface && CFG.export_subharmonic_spectrum_figur
 end
 
 if CFG.compare_mf12_subharmonic_surface && CFG.export_standard_figures && ~isempty(fieldnames(surface_subharmonic_compare))
-    for quantity_name = {'u', 'w'}
+    for quantity_name = {'u'}
         var_name = quantity_name{1};
         ref_field = surface_subharmonic_compare.ow3d.(var_name);
         mf12_field = surface_subharmonic_compare.mf12.(var_name);
+        if strcmpi(var_name, 'u')
+            label_a = 'OW3D bare';
+        else
+            label_a = 'OW3D strict 2(-)';
+        end
         metrics = compare_series_metrics(ref_field, mf12_field);
         y_limits_pair = compute_pairwise_ylimits({ref_field}, {mf12_field});
         y_limits_diff = compute_pairwise_ylimits({ref_field - mf12_field}, {zeros(size(ref_field))});
@@ -390,7 +430,7 @@ if CFG.compare_mf12_subharmonic_surface && CFG.export_standard_figures && ~isemp
 
         ax1 = nexttile(tile);
         draw_comparison_panel(ax1, x_plot, ref_field, mf12_field, 'Subharmonic comparison', ...
-            y_limits_pair(1, :), quantity_axis_label(var_name), x_limits, 'OW3D', 'MF12');
+            y_limits_pair(1, :), quantity_axis_label(var_name), x_limits, label_a, 'MF12');
         text(ax1, 0.02, 0.92, sprintf('corr = %.3f, RMSE = %.3e, peak ratio = %.3f', ...
             metrics.corr, metrics.rmse, metrics.peak_ratio), ...
             'Units', 'normalized', 'VerticalAlignment', 'top', ...
@@ -398,7 +438,7 @@ if CFG.compare_mf12_subharmonic_surface && CFG.export_standard_figures && ~isemp
 
         ax2 = nexttile(tile);
         draw_difference_panel(ax2, x_plot, ref_field - mf12_field, ...
-            'Difference (OW3D - MF12)', y_limits_diff(1, :), quantity_axis_label(var_name), x_limits);
+            sprintf('Difference (%s - MF12)', label_a), y_limits_diff(1, :), quantity_axis_label(var_name), x_limits);
 
         annotation(fig, 'textbox', [0.13 0.01 0.82 0.04], ...
             'String', build_surface_subharmonic_footer(surface_subharmonic_compare.meta, y_vec(1)), ...
@@ -409,6 +449,101 @@ if CFG.compare_mf12_subharmonic_surface && CFG.export_standard_figures && ~isemp
             sprintf('OW3D_boundkinematics_surface_%s_mf12_subharmonic_sigma_%03d_tidx_%04d.png', ...
             var_name, sigma_idx, selected_time_index)), 'Resolution', 300);
     end
+end
+
+if CFG.compare_mf12_subharmonic_surface && CFG.export_standard_figures && ~isempty(fieldnames(surface_subharmonic_compare))
+    components = surface_subharmonic_compare.ow3d;
+    component_series = {components.u_raw, components.phix_sigma, components.u_chain, components.u_bare};
+    component_labels = {'u_{raw}^{(2-)}', '(\phi_x|_\sigma)^{(2-)}', 'u_{chain}^{(2-)}', 'u_{bare}^{(2-)}'};
+    component_colors = {
+        [0.10 0.10 0.10], ...
+        [0.82 0.24 0.14], ...
+        [0.12 0.39 0.71], ...
+        [0.18 0.55 0.34]};
+    y_limits_components = compute_multi_series_ylimits(component_series);
+
+    fig = create_publishable_figure([140 110 1450 820]);
+    tile = tiledlayout(fig, 2, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
+    title(tile, sprintf('OW3D surface horizontal-velocity second-subharmonic decomposition (\\sigma = %.3f, t index = %d, t = %.4f s)', ...
+        sigma_value, selected_time_index, t_selected), ...
+        'Interpreter', 'tex', 'FontSize', 16, 'FontWeight', 'bold');
+
+    ax1 = nexttile(tile);
+    hold(ax1, 'on');
+    for idx = 1:numel(component_series)
+        plot(ax1, x_plot, component_series{idx}, 'LineWidth', 1.7, ...
+            'Color', component_colors{idx}, 'DisplayName', component_labels{idx});
+    end
+    hold(ax1, 'off');
+    grid(ax1, 'on'); box(ax1, 'on');
+    set(ax1, 'FontName', 'Times New Roman', 'FontSize', 12, 'LineWidth', 1.0);
+    xlim(ax1, x_limits);
+    ylim(ax1, y_limits_components);
+    xlabel(ax1, '$x / \lambda$', 'Interpreter', 'latex', 'FontSize', 13);
+    ylabel(ax1, '$u_s$ (m/s)', 'Interpreter', 'latex', 'FontSize', 13);
+    title(ax1, 'Strict four-phase second-subharmonic components', 'Interpreter', 'tex', 'FontSize', 13, 'FontWeight', 'normal');
+    legend(ax1, 'Location', 'best', 'FontSize', 10);
+
+    ax2 = nexttile(tile);
+    residual = components.u_raw - (components.phix_sigma + components.u_chain);
+    draw_difference_panel(ax2, x_plot, residual, ...
+        'Consistency residual: u_{raw}^{(2-)} - ((\phi_x|_\sigma)^{(2-)} + u_{chain}^{(2-)})', ...
+        compute_multi_series_ylimits({residual}), quantity_axis_label('u'), x_limits);
+
+    annotation(fig, 'textbox', [0.13 0.01 0.82 0.04], ...
+        'String', build_surface_subharmonic_footer(surface_subharmonic_compare.meta, y_vec(1)), ...
+        'Interpreter', 'tex', 'EdgeColor', 'none', 'HorizontalAlignment', 'left', ...
+        'FontName', 'Times New Roman', 'FontSize', 11);
+
+    exportgraphics(fig, fullfile(CFG.output_dir, ...
+        sprintf('OW3D_boundkinematics_surface_u_subharmonic_decomposition_sigma_%03d_tidx_%04d.png', ...
+        sigma_idx, selected_time_index)), 'Resolution', 300);
+end
+
+if CFG.check_linear_group_energy && CFG.export_linear_group_energy_figure && ~isempty(fieldnames(linear_group_energy))
+    fig = create_publishable_figure([150 110 1500 920]);
+    tile = tiledlayout(fig, 2, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
+    title(tile, sprintf('Linear wave-group energy audit (t index = %d, t = %.4f s)', ...
+        selected_time_index, t_selected), 'Interpreter', 'tex', 'FontSize', 16, 'FontWeight', 'bold');
+
+    ax1 = nexttile(tile);
+    plot(ax1, x_plot, linear_group_energy.raw.eta11, 'Color', [0.10 0.10 0.10], 'LineWidth', 1.5, 'DisplayName', 'raw \eta^{(1)}'); hold(ax1, 'on');
+    plot(ax1, x_plot, linear_group_energy.raw.envelope, '--', 'Color', [0.12 0.39 0.71], 'LineWidth', 1.5, 'DisplayName', 'raw envelope');
+    plot(ax1, x_plot, -linear_group_energy.raw.envelope, '--', 'Color', [0.12 0.39 0.71], 'LineWidth', 1.0, 'HandleVisibility', 'off');
+    grid(ax1, 'on'); box(ax1, 'on');
+    set(ax1, 'FontName', 'Times New Roman', 'FontSize', 12, 'LineWidth', 1.0);
+    xlim(ax1, [x_plot(1), x_plot(end)]);
+    xlabel(ax1, '$x / \lambda$', 'Interpreter', 'latex', 'FontSize', 13);
+    ylabel(ax1, '$\eta^{(1)}$ (m)', 'Interpreter', 'latex', 'FontSize', 13);
+    title(ax1, '(a) Raw linear wave group', 'Interpreter', 'tex', 'FontSize', 13, 'FontWeight', 'normal');
+    legend(ax1, 'Location', 'best', 'FontSize', 10);
+
+    ax2 = nexttile(tile);
+    plot(ax2, x_plot, linear_group_energy.filtered.eta11, 'Color', [0.10 0.10 0.10], 'LineWidth', 1.5, 'DisplayName', 'filtered \eta^{(1)}'); hold(ax2, 'on');
+    plot(ax2, x_plot, linear_group_energy.filtered.envelope, '--', 'Color', [0.82 0.24 0.14], 'LineWidth', 1.5, 'DisplayName', 'filtered envelope');
+    plot(ax2, x_plot, -linear_group_energy.filtered.envelope, '--', 'Color', [0.82 0.24 0.14], 'LineWidth', 1.0, 'HandleVisibility', 'off');
+    grid(ax2, 'on'); box(ax2, 'on');
+    set(ax2, 'FontName', 'Times New Roman', 'FontSize', 12, 'LineWidth', 1.0);
+    xlim(ax2, [x_plot(1), x_plot(end)]);
+    xlabel(ax2, '$x / \lambda$', 'Interpreter', 'latex', 'FontSize', 13);
+    ylabel(ax2, '$\eta^{(1)}$ (m)', 'Interpreter', 'latex', 'FontSize', 13);
+    title(ax2, '(b) Filtered linear wave group', 'Interpreter', 'tex', 'FontSize', 13, 'FontWeight', 'normal');
+    legend(ax2, 'Location', 'best', 'FontSize', 10);
+
+    ax3 = nexttile(tile);
+    plot_linear_group_spectrum_local(ax3, linear_group_energy.raw, '(c) Raw linear spectrum');
+
+    ax4 = nexttile(tile);
+    plot_linear_group_spectrum_local(ax4, linear_group_energy.filtered, '(d) Filtered linear spectrum');
+
+    annotation(fig, 'textbox', [0.11 0.01 0.84 0.06], ...
+        'String', build_linear_group_energy_footer_local(linear_group_energy, CFG), ...
+        'Interpreter', 'tex', 'EdgeColor', 'none', 'HorizontalAlignment', 'left', ...
+        'FontName', 'Times New Roman', 'FontSize', 11);
+
+    exportgraphics(fig, fullfile(CFG.output_dir, ...
+        sprintf('OW3D_boundkinematics_linear_group_energy_tidx_%04d.png', selected_time_index)), ...
+        'Resolution', 300);
 end
 
 disp('OW3D bound-kinematics postprocessing complete.');
@@ -750,6 +885,36 @@ function kin_path = resolve_kinematics_path(case_folder, file_id)
     end
 
     kin_path = fullfile(case_folder, file_name);
+end
+
+function alpha = resolve_ow3d_diff_alpha(case_folder, alpha_override)
+    if nargin >= 2 && ~isempty(alpha_override)
+        alpha = alpha_override;
+        return;
+    end
+
+    inp_path = fullfile(case_folder, 'OceanWave3D.inp');
+    alpha = 3;
+    if ~isfile(inp_path)
+        return;
+    end
+
+    lines = regexp(fileread(inp_path), '\r\n|\n|\r', 'split');
+    lines = cellfun(@strtrim, lines, 'UniformOutput', false);
+    lines = lines(~cellfun(@isempty, lines));
+    if numel(lines) < 4
+        return;
+    end
+
+    tokens = regexp(lines{4}, '[-+]?\d*\.?\d+(?:[eEdD][-+]?\d+)?', 'match');
+    if isempty(tokens)
+        return;
+    end
+
+    alpha_value = str2double(tokens{1});
+    if isfinite(alpha_value) && alpha_value >= 1
+        alpha = round(alpha_value);
+    end
 end
 
 function time_index = resolve_time_index(CFG, cfg_time_index, n_times_valid, n_times_total)
@@ -1177,6 +1342,70 @@ function out = compute_mf12_second_subharmonic_surface(eta11, x_vec, depth, grav
     out.energy_keep = energy_keep;
 end
 
+function out = compute_ow3d_second_subharmonic_surface(eta_phases, vars_phases, h_vec, sigma_idx, sigma_value, x_vec, four_phase_coef, diff_alpha)
+    eta_surface_phases = eta_phases;
+    phi_surface_phases = squeeze(vars_phases.phi(:, sigma_idx, :));
+    u_surface_phases = squeeze(vars_phases.u(:, sigma_idx, :));
+    w_surface_phases = squeeze(vars_phases.w(:, sigma_idx, :));
+    h_row = h_vec(:).';
+
+    phix_sigma_phases = diffxeven_phasewise_local(phi_surface_phases, x_vec, diff_alpha);
+    etax_phases = diffxeven_phasewise_local(eta_surface_phases, x_vec, diff_alpha);
+    hx_row = diffxeven_local(h_row(:), x_vec, diff_alpha).';
+
+    d_surface_phases = h_row + eta_surface_phases;
+    d_surface_phases = max(d_surface_phases, eps);
+    hx_phases = repmat(hx_row, size(eta_surface_phases, 1), 1);
+    chain_metric_phases = (((1 - sigma_value) .* hx_phases ./ d_surface_phases) ...
+        - (sigma_value .* etax_phases ./ d_surface_phases)) .* w_surface_phases;
+    chain_surface_phases = -sigma_value .* etax_phases .* w_surface_phases;
+
+    raw_harmonics = reconstruct_harmonics_1d(u_surface_phases, four_phase_coef);
+    phix_harmonics = reconstruct_harmonics_1d(phix_sigma_phases, four_phase_coef);
+    chain_metric_harmonics = reconstruct_harmonics_1d(chain_metric_phases, four_phase_coef);
+    chain_surface_harmonics = reconstruct_harmonics_1d(chain_surface_phases, four_phase_coef);
+    closure_metric = raw_harmonics(4, :).'- (phix_harmonics(4, :).'+ chain_metric_harmonics(4, :).');
+    closure_surface = raw_harmonics(4, :).'- (phix_harmonics(4, :).'+ chain_surface_harmonics(4, :).');
+
+    if max(abs(closure_metric)) <= max(abs(closure_surface))
+        selected_chain_phases = chain_metric_phases;
+        selected_chain_harmonics = chain_metric_harmonics;
+        selected_mode = 'ow3d_metric';
+        alt_chain_harmonics = chain_surface_harmonics;
+        alt_mode = 'surface_limit';
+    else
+        selected_chain_phases = chain_surface_phases;
+        selected_chain_harmonics = chain_surface_harmonics;
+        selected_mode = 'surface_limit';
+        alt_chain_harmonics = chain_metric_harmonics;
+        alt_mode = 'ow3d_metric';
+    end
+
+    u_bare_phases = u_surface_phases - selected_chain_phases;
+
+    w_harmonics = reconstruct_harmonics_1d(w_surface_phases, four_phase_coef);
+    u_bare_harmonics = reconstruct_harmonics_1d(u_bare_phases, four_phase_coef);
+
+    out = struct();
+    out.u = u_bare_harmonics(4, :).';
+    out.w = w_harmonics(4, :).';
+    out.u_raw = raw_harmonics(4, :).';
+    out.phix_sigma = phix_harmonics(4, :).';
+    out.u_chain = selected_chain_harmonics(4, :).';
+    out.u_bare = u_bare_harmonics(4, :).';
+    out.u_bare_residual = out.u_bare - out.phix_sigma;
+    out.u_raw_residual = out.u_raw - (out.phix_sigma + out.u_chain);
+    out.chain_metric = chain_metric_harmonics(4, :).';
+    out.chain_surface = chain_surface_harmonics(4, :).';
+    out.chain_alternative = alt_chain_harmonics(4, :).';
+    out.selected_chain_mode = selected_mode;
+    out.alternative_chain_mode = alt_mode;
+    out.closure_metric_max = max(abs(closure_metric));
+    out.closure_surface_max = max(abs(closure_surface));
+    out.hx = hx_row(:);
+    out.d_mean = mean(d_surface_phases, 1).';
+end
+
 function field_out = lowpass_wavenumber_component_local(field_in, x_vec, k_cutoff, transition)
     field_in = field_in(:);
     x_vec = x_vec(:);
@@ -1211,6 +1440,187 @@ function keep_idx = select_energy_dominant_indices_local(spectrum, candidate_idx
     cumulative_energy = cumsum(sorted_energy) / total_energy;
     cutoff_idx = find(cumulative_energy >= energy_keep, 1, 'first');
     keep_idx = sort(candidate_idx(order(1:cutoff_idx)));
+end
+
+function derivative = diffxeven_phasewise_local(fields_by_phase, x_vec, alpha)
+    derivative = zeros(size(fields_by_phase));
+    for phase_idx = 1:size(fields_by_phase, 1)
+        derivative(phase_idx, :) = diffxeven_local(fields_by_phase(phase_idx, :).', x_vec, alpha).';
+    end
+end
+
+function derivative = diffxeven_local(field_in, x_vec, alpha)
+    field_in = field_in(:);
+    x_vec = x_vec(:);
+
+    if nargin < 3 || isempty(alpha)
+        alpha = 2;
+    end
+
+    if numel(field_in) ~= numel(x_vec)
+        error('Dimension mismatch between field and x vector for DiffXEven reconstruction.');
+    end
+
+    nx = numel(field_in);
+    if nx < 2
+        derivative = zeros(size(field_in));
+        return;
+    end
+
+    dx = diff(x_vec);
+    if any(abs(dx - dx(1)) > 1e-10 * max(1, abs(dx(1))))
+        error('DiffXEven reconstruction currently requires uniform x spacing.');
+    end
+
+    alpha = max(1, min(alpha, floor((nx - 1) / 2)));
+    rank = 2 * alpha + 1;
+    coeff = build_stencil_even_local(alpha, 1) / dx(1);
+    derivative = zeros(nx, 1);
+
+    for ix = 1:alpha
+        derivative(ix) = coeff(:, ix).' * field_in(1:rank);
+    end
+    for ix = alpha + 1:nx - alpha
+        derivative(ix) = coeff(:, alpha + 1).' * field_in(ix - alpha:ix + alpha);
+    end
+    for ix = nx - alpha + 1:nx
+        derivative(ix) = coeff(:, rank - (nx - ix)).' * field_in(nx - rank + 1:nx);
+    end
+end
+
+function out = analyze_linear_group_energy_local(eta11_raw, eta11_filtered, x_vec, kp, CFG)
+    out = struct();
+    out.raw = compute_linear_group_energy_stats_local(eta11_raw, x_vec, kp, CFG);
+    out.filtered = compute_linear_group_energy_stats_local(eta11_filtered, x_vec, kp, CFG);
+end
+
+function stats = compute_linear_group_energy_stats_local(eta11, x_vec, kp, CFG)
+    eta11 = eta11(:);
+    x_vec = x_vec(:);
+    nx = numel(x_vec);
+    dx = x_vec(2) - x_vec(1);
+    kx = vwa_kxgrid_local(nx, dx);
+    spec = fft(eta11) / nx;
+    amp = abs(spec);
+    energy = amp.^2;
+    positive_mask = (kx >= 0);
+
+    k_pos = kx(positive_mask);
+    amp_pos = amp(positive_mask);
+    energy_pos = energy(positive_mask);
+
+    total_energy = sum(energy_pos);
+    if total_energy <= 0
+        total_energy = 1.0;
+    end
+
+    low_component = apply_linear_group_band_local(eta11, x_vec, kp, CFG.linear_group_low_band, CFG);
+    core_component = apply_linear_group_band_local(eta11, x_vec, kp, CFG.linear_group_core_band, CFG);
+    high_component = apply_linear_group_band_local(eta11, x_vec, kp, CFG.linear_group_high_band, CFG);
+
+    [peak_amp, peak_idx] = max(amp_pos);
+    if isempty(peak_idx)
+        peak_idx = 1;
+        peak_amp = 0;
+    end
+
+    envelope = abs(hilbert(eta11));
+    envelope_energy = envelope.^2;
+    x_center = sum(x_vec .* envelope_energy) / max(sum(envelope_energy), eps);
+    x_std = sqrt(sum(((x_vec - x_center).^2) .* envelope_energy) / max(sum(envelope_energy), eps));
+
+    stats = struct();
+    stats.eta11 = eta11;
+    stats.envelope = envelope;
+    stats.k_over_kp = k_pos / kp;
+    stats.amp = amp_pos;
+    stats.energy = energy_pos;
+    stats.total_energy = total_energy;
+    stats.low_component = low_component;
+    stats.core_component = core_component;
+    stats.high_component = high_component;
+    stats.low_fraction = sum(abs(low_component).^2) / max(sum(abs(eta11).^2), eps);
+    stats.core_fraction = sum(abs(core_component).^2) / max(sum(abs(eta11).^2), eps);
+    stats.high_fraction = sum(abs(high_component).^2) / max(sum(abs(eta11).^2), eps);
+    stats.peak_k_over_kp = k_pos(peak_idx) / kp;
+    stats.peak_amplitude = peak_amp;
+    stats.energy_centroid_k_over_kp = sum((k_pos / kp) .* energy_pos) / total_energy;
+    stats.energy_spread_k_over_kp = sqrt(sum(((k_pos / kp - stats.energy_centroid_k_over_kp).^2) .* energy_pos) / total_energy);
+    stats.envelope_center_x = x_center;
+    stats.envelope_std_x = x_std;
+end
+
+function print_linear_group_energy_audit_local(label_text, stats)
+    fprintf('%s:\n', label_text);
+    fprintf('  peak k/kp = %.6f, centroid k/kp = %.6f, spread = %.6f\n', ...
+        stats.peak_k_over_kp, stats.energy_centroid_k_over_kp, stats.energy_spread_k_over_kp);
+    fprintf('  energy fractions: low = %.4f, core = %.4f, high = %.4f\n', ...
+        stats.low_fraction, stats.core_fraction, stats.high_fraction);
+    fprintf('  envelope center x = %.6f m, envelope std = %.6f m\n', ...
+        stats.envelope_center_x, stats.envelope_std_x);
+end
+
+function plot_linear_group_spectrum_local(ax, stats, panel_title)
+    plot(ax, stats.k_over_kp, stats.amp, 'k-', 'LineWidth', 1.8); hold(ax, 'on');
+    xline(ax, stats.peak_k_over_kp, '--', 'Color', [0.82 0.24 0.14], 'LineWidth', 1.2, ...
+        'DisplayName', sprintf('peak %.3f k_p', stats.peak_k_over_kp));
+    xline(ax, stats.energy_centroid_k_over_kp, '--', 'Color', [0.12 0.39 0.71], 'LineWidth', 1.2, ...
+        'DisplayName', sprintf('centroid %.3f k_p', stats.energy_centroid_k_over_kp));
+    grid(ax, 'on'); box(ax, 'on');
+    set(ax, 'FontName', 'Times New Roman', 'FontSize', 12, 'LineWidth', 1.0);
+    xlabel(ax, '$|k| / k_p$', 'Interpreter', 'latex', 'FontSize', 13);
+    ylabel(ax, 'Amplitude', 'Interpreter', 'tex', 'FontSize', 13);
+    title(ax, panel_title, 'Interpreter', 'tex', 'FontSize', 13, 'FontWeight', 'normal');
+    xlim(ax, [0, max(3, max(stats.k_over_kp))]);
+    legend(ax, 'Location', 'best', 'FontSize', 10);
+end
+
+function field_out = apply_linear_group_band_local(field_in, x_vec, kp, band_factors, CFG)
+    field_in = field_in(:);
+    x_vec = x_vec(:);
+    nx = numel(field_in);
+    dx = x_vec(2) - x_vec(1);
+    dkx = 2 * pi / (nx * dx);
+    kx = [0:ceil(nx / 2) - 1, -floor(nx / 2):-1]' * dkx;
+    mask = smooth_bandpass_mask_energy_local(abs(kx), band_factors(1) * kp, band_factors(2) * kp, ...
+        CFG.linear_group_transition_low * kp, CFG.linear_group_transition_high * kp);
+    field_out = real(ifft(fft(field_in) .* mask));
+end
+
+function mask = smooth_bandpass_mask_energy_local(k_abs, kmin, kmax, transition_low, transition_high)
+    k_abs = k_abs(:);
+    mask = zeros(size(k_abs));
+
+    if kmax <= 0
+        return;
+    end
+
+    if kmin <= 0
+        mask(k_abs <= kmax) = 1.0;
+    else
+        mask(k_abs >= kmin & k_abs <= kmax) = 1.0;
+        if transition_low > 0
+            idx = k_abs > max(0, kmin - transition_low) & k_abs < kmin;
+            xi = (k_abs(idx) - (kmin - transition_low)) / transition_low;
+            mask(idx) = 0.5 - 0.5 * cos(pi * xi);
+        end
+    end
+
+    if transition_high > 0
+        idx = k_abs > kmax & k_abs < (kmax + transition_high);
+        xi = (k_abs(idx) - kmax) / transition_high;
+        mask(idx) = 0.5 + 0.5 * cos(pi * xi);
+    end
+end
+
+function footer = build_linear_group_energy_footer_local(linear_group_energy, CFG)
+    footer = sprintf(['Core band: $[%.2f, %.2f]k_p$, low band: $[%.2f, %.2f)k_p$, high band: $(%.2f, %.2f]k_p$. ' ...
+        'Raw core fraction = %.3f, filtered core fraction = %.3f. ' ...
+        'If low/high fractions stay large or the spectral centroid drifts far from $k_p$, the linear wave group likely carries an unnatural energy redistribution.'], ...
+        CFG.linear_group_core_band(1), CFG.linear_group_core_band(2), ...
+        CFG.linear_group_low_band(1), CFG.linear_group_low_band(2), ...
+        CFG.linear_group_high_band(1), CFG.linear_group_high_band(2), ...
+        linear_group_energy.raw.core_fraction, linear_group_energy.filtered.core_fraction);
 end
 
 function [coeff, phase_type] = surface_quantity_transfer_coeff(quantity_name, order, k_abs, depth, gravity, small_kd_cutoff)
@@ -1414,6 +1824,27 @@ function metrics = compare_series_metrics(reference, candidate)
     end
 end
 
+function print_surface_subharmonic_diagnostics_local(surface_compare)
+    ow = surface_compare.ow3d;
+    mf = surface_compare.mf12;
+
+    metrics_raw = compare_series_metrics(ow.u_raw, mf.u);
+    metrics_bare = compare_series_metrics(ow.u_bare, mf.u);
+    metrics_phix = compare_series_metrics(ow.phix_sigma, mf.u);
+
+    fprintf('\n=== Surface subharmonic diagnostics ===\n');
+    fprintf('Selected OW3D chain mode: %s (metric residual %.3e, surface residual %.3e)\n', ...
+        ow.selected_chain_mode, ow.closure_metric_max, ow.closure_surface_max);
+    fprintf('u_raw  vs MF12: corr = %.6f, RMSE = %.6e, peak ratio = %.6f\n', ...
+        metrics_raw.corr, metrics_raw.rmse, metrics_raw.peak_ratio);
+    fprintf('u_bare vs MF12: corr = %.6f, RMSE = %.6e, peak ratio = %.6f\n', ...
+        metrics_bare.corr, metrics_bare.rmse, metrics_bare.peak_ratio);
+    fprintf('phix   vs MF12: corr = %.6f, RMSE = %.6e, peak ratio = %.6f\n', ...
+        metrics_phix.corr, metrics_phix.rmse, metrics_phix.peak_ratio);
+    fprintf('Closure residuals: max|u_raw-(phix+chain)| = %.6e, max|u_bare-phix| = %.6e\n', ...
+        max(abs(ow.u_raw_residual)), max(abs(ow.u_bare_residual)));
+end
+
 function [k_plot, amp_a, amp_b] = compute_one_sided_spectrum(field_a, field_b, x_vec, kp)
     field_a = field_a(:);
     field_b = field_b(:);
@@ -1442,8 +1873,12 @@ function [k_plot, amp_a, amp_b] = compute_one_sided_spectrum(field_a, field_b, x
 end
 
 function footer = build_surface_subharmonic_footer(meta, y_value)
-    footer = sprintf(['OW3D reference: four-phase mean + low-pass. MF12 input: reconstructed $\\eta^{(1)}$. ' ...
-        '$|k|<%.2f k_p$, transition = %.2f k_p, retained linear components = %d, y = %.4f m.'], ...
+    footer = sprintf(['OW3D reference: strict four-phase second-subharmonic extraction; ' ...
+        '$u$ compare uses bare target with chain mode = %s and DiffXEven alpha = %d. ' ...
+        'Raw, chain, and closure diagnostics are exported separately. MF12 input: reconstructed $\\eta^{(1)}$. ' ...
+        'Legacy low-pass band was $|k|<%.2f k_p$ with transition %.2f $k_p$. ' ...
+        'Retained linear components = %d, y = %.4f m.'], ...
+        strrep(meta.ow3d_chain_mode, '_', '\_'), meta.ow3d_diff_alpha, ...
         meta.cutoff / meta.kp, meta.transition / meta.kp, meta.linear_component_count, y_value);
 end
 
@@ -1457,6 +1892,11 @@ function kd = extract_kd_from_case_pattern(folder_pattern)
     if ~(isfinite(kd) && kd > 0)
         error('Parsed invalid kd value from CFG.folder_pattern: %s', folder_pattern);
     end
+end
+
+function case_tag = build_case_tag_local(folder_pattern)
+    case_tag = strrep(folder_pattern, '_phi_%d', '');
+    case_tag = regexprep(case_tag, '[^A-Za-z0-9._-]', '_');
 end
 
 function x_limits = resolve_plot_xlim(x_plot, eta11, plot_window_lambda)
@@ -1474,6 +1914,31 @@ function x_limits = resolve_plot_xlim(x_plot, eta11, plot_window_lambda)
     x_limits = [x_center - half_width, x_center + half_width];
     x_limits(1) = max(x_limits(1), x_plot(1));
     x_limits(2) = min(x_limits(2), x_plot(end));
+end
+
+function y_limits = compute_multi_series_ylimits(series_list)
+    values = [];
+    for idx = 1:numel(series_list)
+        values = [values; series_list{idx}(:)]; %#ok<AGROW>
+    end
+
+    if isempty(values)
+        y_limits = [-1, 1];
+        return;
+    end
+
+    values = values(isfinite(values));
+    if isempty(values)
+        y_limits = [-1, 1];
+        return;
+    end
+
+    max_abs = max(abs(values));
+    if max_abs < eps
+        y_limits = [-1, 1];
+    else
+        y_limits = 1.1 * [-max_abs, max_abs];
+    end
 end
 
 function out = ternary_text(condition, true_text, false_text)

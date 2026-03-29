@@ -1,6 +1,8 @@
 cpp/build/
 cpp/build_verify/
 OceanWave3D-Fortran90-master/
+uni initial condition/
+directional initial condition/
 # OW3D large binary outputs
 Kinematics*.bin
 EP_*.bin

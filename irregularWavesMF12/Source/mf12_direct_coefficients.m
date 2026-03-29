@@ -1,4 +1,4 @@
-function [coeffs] = mf12_direct_coefficients(order,g,h,a,b,kx,ky,Ux,Uy, dispCoeffs)
+function [coeffs] = mf12_direct_coefficients(order,g,h,a,b,kx,ky,Ux,Uy, dispCoeffs, opts)
 % A function to evaluate the third-order multi-directional irregular wave 
 % theory of Madsen & Fuhrman (2012) (MF12), also utilizing corrections from 
 % the appendix of Fuhrman et al. (2023).  Equation numbers in comments 
@@ -18,8 +18,10 @@ function [coeffs] = mf12_direct_coefficients(order,g,h,a,b,kx,ky,Ux,Uy, dispCoef
 %
 % Programmed by David R. Fuhrman, November, 2022
 
-% Set (optional) default argument dispCoeffs to 0 (false)
+% Set optional arguments
 if nargin < 10, dispCoeffs = 0; end
+if nargin < 11 || isempty(opts), opts = struct(); end
+if ~isfield(opts, 'disable_third_order_correction'), opts.disable_third_order_correction = false; end
 
 % Initialize
 muStar = 0*a; 
@@ -103,8 +105,13 @@ if order == 3
             omega3(n) = omega3(n) + c(m)^2*kappa(m)^2*Om_nm(cnm); % Eq. 3.73 (second part)
         end
     end
-    omega = omega + omega3.*omega1; % Eq. 3.72 (adds additional contributions to Eq. 3.5a)
-    muStar = muStar + F13.*cosh(h*kappa); % First part of Eq. 3.84 (corrected, see Fuhrman et al. 2023, Eq. A3)
+    if ~opts.disable_third_order_correction
+        omega = omega + omega3.*omega1; % Eq. 3.72 (adds additional contributions to Eq. 3.5a)
+        muStar = muStar + F13.*cosh(h*kappa); % First part of Eq. 3.84 (corrected, see Fuhrman et al. 2023, Eq. A3)
+    else
+        omega3(:) = 0;
+        F13(:) = 0;
+    end
 end
 
 % Second order,
@@ -297,6 +304,7 @@ coeffs.a = a; coeffs.b = b; coeffs.kx = kx; coeffs.ky = ky;
 coeffs.Ux = Ux; coeffs.Uy = Uy;
 coeffs.kappa = kappa; coeffs.omega1 = omega1; coeffs.omega = omega;
 coeffs.mu = mu; coeffs.muStar = muStar; coeffs.F = F; coeffs.c = c; coeffs.kappa_2 = kappa_2;
+coeffs.disable_third_order_correction = opts.disable_third_order_correction;
 if order >= 2 % Second-order coefficients
     coeffs.A_2 = A_2; coeffs.B_2 = B_2;
     coeffs.F_2 = F_2; coeffs.G_2 = G_2; coeffs.mu_2 = mu_2;

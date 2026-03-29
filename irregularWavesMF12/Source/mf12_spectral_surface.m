@@ -322,7 +322,7 @@ function [eta, phiS, X, Y] = mf12_spectral_surface(coeffs, Lx, Ly, Nx, Ny, t)
         Z_npmpp = (coeffs.A_npmpp(mask) + 1i*coeffs.B_npmpp(mask)) .* exp(-1i * coeffs.omega_npmpp(mask) * t);
         
         % Factor of 2 required for triple sums, matching the retained direct implementation.
-        Z_npmpp = Z_npmpp * 2; 
+        Z_npmpp = Z_npmpp*2; 
  
         
         Z_npmpp = Z_npmpp(:);

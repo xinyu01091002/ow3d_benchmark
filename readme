@@ -14,7 +14,7 @@ This repository is currently organized around MF12-based MATLAB tools for prepar
 - `postprocess_ow3d_boundwaves.m`
   Reads OW3D `EP_XXXXX.bin` files, applies the four-phase reconstruction workflow, and plots first-, second-, and third-order bound-wave fields.
 - `postprocess_ow3d_boundkinematics.m`
-  Reads four phase-shifted OW3D kinematics files, reconstructs first-, second-, and third-order surface/bulk kinematic harmonics, and compares OW3D surface `u` and `w` against the current VWA-style approximation driven only by `eta^(1)`.
+  Reads four phase-shifted OW3D kinematics files and now focuses on the strict second-order/subharmonic surface horizontal velocity `u20` diagnostic. The script reconstructs the OW3D bare/chain/raw decomposition with an OW3D-style `DiffXEven` x-derivative, compares `OW3D bare u20` against MF12 `u^{(2-)}`, and exports only the `u20` comparison and decomposition figures.
 - `diagnose_ow3d_phit.m`
   Focused diagnostic script for checking the meaning and scaling of the OW3D `phit` quantity separately from the main `u/w` comparison workflow.
 - `quick_extract_ow3d_subharmonic_velocity.m`
@@ -41,7 +41,7 @@ Core dependency:
 VWA helper/test utilities:
 
 - `test functions for VWA Opensource/`
-  Reusable MATLAB helpers for the current VWA-style comparisons, including the standalone surface-velocity test script and the shared `u`/`w` transfer-kernel functions now used by the kinematics postprocessor.
+  Reusable MATLAB helpers for the current VWA-style comparisons and standalone surface-velocity experiments. The main kinematics postprocessor is now centered on the MF12/OW3D `u20` diagnostic rather than the earlier VWA surface comparison workflow.
 
 Reference note:
 
@@ -140,12 +140,18 @@ run('quick_extract_ow3d_subharmonic_velocity.m');
 run(fullfile('test functions for VWA Opensource', 'test_surface_velocity_script.m'));
 ```
 
-The current surface-kinematics comparison workflow is:
+The current subharmonic-velocity workflow is:
 
 - run `postprocess_ow3d_boundkinematics.m` on the unidirectional OW3D kinematics cases
-- use the built-in OW3D vs VWA comparison plots for surface `u` and `w`
-- use `quick_extract_ow3d_subharmonic_velocity.m` when the target is the strict second-order difference-frequency/subharmonic surface horizontal velocity `u20`
-- optionally run `test functions for VWA Opensource/test_surface_velocity_script.m` for a standalone comparison figure set driven by the saved raw snapshot
+- use the built-in `OW3D bare u20` vs `MF12 u^{(2-)}` plot and the `u_raw / phix_sigma / chain / u_bare` decomposition plot
+- switch cases without editing the script by setting `OW3D_FOLDER_PATTERN`, for example:
+
+```powershell
+$env:OW3D_FOLDER_PATTERN='T_init-20_Tp_Alpha_1.0_Akp_006_kd1.0_phi_%d'
+matlab -batch "run('postprocess_ow3d_boundkinematics.m')"
+```
+
+- read the case-specific outputs under `processed_boundkinematics/<case-tag>/`
 
 ## Notes
 
@@ -154,7 +160,7 @@ The current surface-kinematics comparison workflow is:
 - `store_surface_stride` controls OW3D surface-output frequency and the directional generator now defaults to `4`.
 - the directional generator now uses a fixed user-specified `Tp` for timing instead of recomputing it from `kp` and `kd`
 - The current directional output root may be a temporary test directory, depending on the configuration block at the top of the script.
-- The current VWA comparison path that is actively wired into the postprocessor is focused on surface `u` and `w`; `phit` is kept as a separate diagnostic topic for now.
+- The current `postprocess_ow3d_boundkinematics.m` output is intentionally narrow: it keeps only the `u20` MF12 comparison and the associated OW3D chain-correction decomposition. `phit` is still a separate diagnostic topic.
 
 ## Development Log
 
@@ -188,3 +194,5 @@ The current surface-kinematics comparison workflow is:
   Verified that the reconstructed `\eta^{(1)}` from the extracted linear spectrum matches the OW3D first-order `\eta` before building the strict `u^{(2-)}` comparison.
 - 2026-03-24
   Added OW3D `u` decomposition diagnostics showing that the surface subharmonic `u20` is dominated by the sigma-coordinate chain-rule correction, unlike the superharmonic `u2` case.
+- 2026-03-29
+  Reworked `postprocess_ow3d_boundkinematics.m` into a `u20`-focused diagnostic: OW3D-consistent `DiffXEven` reconstruction for `phix_sigma`, explicit chain-correction closure, case-tagged output folders, and `OW3D bare u20` vs MF12 `u^{(2-)}` as the primary comparison target.

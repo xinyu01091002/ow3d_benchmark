@@ -12,6 +12,7 @@ function [coeffs] = mf12_spectral_coefficients(order,g,h,a,b,kx,ky,Ux,Uy,varargi
 %     dispCoeffs (scalar, default 0)
 %     opts (struct, optional):
 %       opts.enable_subharmonic (default false)
+%       opts.disable_third_order_correction (default false)
 %   Notes:
 %     Disk streaming/out-of-core paths are intentionally disabled in this
 %     single-workflow version; this function always computes in RAM.
@@ -30,6 +31,7 @@ if ~isempty(varargin)
 end
 
 if ~isfield(opts, 'enable_subharmonic'), opts.enable_subharmonic = false; end
+if ~isfield(opts, 'disable_third_order_correction'), opts.disable_third_order_correction = false; end
 if opts.enable_subharmonic
     % Isolated full-subharmonic path. No subharmonic memory/compute in default mode.
     coeffs = mf12_direct_coefficients(order,g,h,a,b,kx,ky,Ux,Uy,dispCoeffs);
@@ -138,8 +140,13 @@ if order == 3
         end
     end
 
-    omega = omega + omega3.*omega1;              % Eq. 3.72
-    muStar = muStar + F13.*cosh(h*kappa);        % Eq. 3.84 correction
+    if ~opts.disable_third_order_correction
+        omega = omega + omega3.*omega1;          % Eq. 3.72
+        muStar = muStar + F13.*cosh(h*kappa);    % Eq. 3.84 correction
+    else
+        omega3(:) = 0;
+        F13(:) = 0;
+    end
 
     % Third-order single summations (self-self-self harmonic)
     kappa_3 = 3*kappa;
@@ -332,6 +339,7 @@ coeffs.F = F;
 coeffs.c = c;
 coeffs.kappa_2 = kappa_2;
 coeffs.superharmonic_only = true;
+coeffs.disable_third_order_correction = opts.disable_third_order_correction;
 
 if order >= 2
     coeffs.A_2 = A_2;
