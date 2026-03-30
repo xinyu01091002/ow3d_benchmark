@@ -226,3 +226,30 @@ The practical finding in this repository has been:
 - the subharmonic part is much more strongly contaminated by the chain correction
 
 which is why removing the chain term is central to the `u_{20}` diagnostic workflow.
+
+## 8. What this note does **not** imply for `w20`
+
+The same sigma-coordinate logic does **not** automatically mean that the vertical velocity `w` should be treated the same way as `u`.
+
+The present repository diagnostics indicate:
+
+- the `u20` mismatch is strongly tied to the horizontal sigma-coordinate chain correction
+- the `w20` mismatch is not explained by the same mechanism
+
+This is consistent with the OW3D storage path:
+
+- for `u`, OW3D writes the x-derivative plus the sigma metric correction term
+- for `w`, OW3D writes the vertical velocity as the transformed vertical derivative divided by `d = h + \eta`
+
+So:
+
+- `u20` requires a bare/raw decomposition
+- `w20` does not currently show evidence for an analogous bare/raw split driven by the same chain term
+
+The current `w20` issue appears to be different:
+
+- in deep water, the comparison is very sensitive to which sigma layer is used
+- matching MF12 against the physical height of a deeper sigma layer improves the amplitude agreement substantially
+- near the top sigma layer, the remaining `w20` discrepancy is therefore better interpreted as a near-surface vertical-structure issue than as a missing `u`-style chain correction
+
+So this note should be used as the explanation for `u20`, but not as a complete explanation for `w20`.

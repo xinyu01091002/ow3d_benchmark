@@ -11,16 +11,16 @@ CFG = struct();
 % -------------------- Sea state --------------------
 CFG.g = 9.81;
 CFG.kp = 0.0279;
-CFG.Akp_list = [0.06];
-CFG.Alpha_list = [1,5];
-CFG.kd_list = [1,8];
+CFG.Akp_list = [0.02];
+CFG.Alpha_list = [1,8];
+CFG.kd_list = [1,5];
 CFG.phases_deg = 0:90:270;
 CFG.single_case_only = false; % If true, only generate the first combination of settings for a quick test.
 CFG.paired_kd_alpha_cases = true; % If true, use (kd_i, Alpha_i) pairs instead of the full kd x Alpha product.
 
 % -------------------- Unidirectional spectrum --------------------
 CFG.kw_left = 0.004606;
-CFG.max_components = 300;
+CFG.max_components = 400;
 CFG.energy_keep_frac = 0.99999;
 
 % -------------------- Domain / timing --------------------
@@ -33,7 +33,7 @@ CFG.Nx = 4097; % Number of x-grid points written to OW3D.init.
 CFG.focus_x_fraction = 0.5; % Focus point as a fraction of Lx.
 
 % -------------------- Output --------------------
-CFG.output_dir = fullfile('uni initial condition', 'ow3d_kinematics_check3');
+CFG.output_dir = fullfile('uni initial condition', 'ow3d_kinematics_check4');
 CFG.store_surface_stride = 8; % Section 8 surface output only. 1 saves every step, 2 every second step, etc.
 CFG.surface_format = 1; % Keep the existing OW3D surface-output format used in this project.
 CFG.enable_ow3d_kinematics = true; % Section 8 OW3D kinematics output.

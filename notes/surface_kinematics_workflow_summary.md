@@ -191,3 +191,56 @@ So for subharmonic velocity, comparing the OW3D surface `u20` directly against t
 
 - reconstruct the OW3D-style chain-rule contribution explicitly, or
 - compare at the level of a quantity whose definition matches the Appendix-A derivation more directly
+
+## 12. Current MF12/OW3D status for `u20`
+
+The more recent MF12-focused diagnostics now support a cleaner statement for the strict second-order horizontal velocity:
+
+- the OW3D decomposition now closes numerically:
+  - `u20_raw ≈ phix_sigma + chain`
+  - `u20_bare ≈ phix_sigma`
+- the most meaningful MF12 comparison target is `OW3D bare u20`, not `OW3D raw u20`
+- the MF12 direct difference-frequency `u20` agrees very well with the derivative of the MF12 bulk potential:
+
+```math
+u_{20}^{\mathrm{MF12}} = \partial_x \Phi_{20}^{\mathrm{bulk}}(z=0)
+```
+
+- differentiating the MF12 surface potential is close but not exactly the same; the difference is small compared with the main MF12/OW3D discrepancy
+
+Practical conclusion:
+
+- for `u20`, the main unresolved issue is now mostly a mild amplitude mismatch
+- the deep-water case is already very close
+- the shallow-water case still shows a moderate amplitude deficit
+
+So the `u20` path is no longer a definition problem; it is now mostly an amplitude-budget problem.
+
+## 13. Current MF12/OW3D status for `w20`
+
+The present `w20` picture is different from `u20`.
+
+What appears to be true now:
+
+- the OW3D stored `w` is already the physical vertical velocity written as `W/d` in the Fortran output path
+- there is no obvious `u`-like sigma-chain correction that needs to be removed first
+- MF12 `w20` and OW3D `w20` often have good spatial correlation, especially in deep water
+- however, the amplitude can differ strongly near the free surface
+
+The new sigma-scan diagnostics indicate:
+
+- in shallow water, changing the sigma level does not change the `w20` comparison very much
+- in deep water, the comparison is highly sensitive to which sigma layer is used
+- if MF12 is evaluated at the physical height corresponding to a deeper sigma layer, the deep-water `w20` agreement improves substantially
+- this means part of the `w20` mismatch is a vertical-location mismatch rather than a pure coefficient error
+
+But this does **not** fully resolve the problem:
+
+- near the very top sigma layer, the OW3D/MF12 `w20` amplitude mismatch remains large
+- moving the MF12 evaluation point from `z=0` to `z=\eta^{(1)}` does not by itself fix the issue
+
+So the present interpretation is:
+
+- `w20` is sensitive to near-surface vertical structure
+- deep-water `w20` cannot be judged well from a surface-only comparison against `z=0`
+- a useful next step is to compare the vertical profile `w20(z)` itself, not only one selected layer

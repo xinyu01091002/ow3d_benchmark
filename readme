@@ -53,6 +53,15 @@ Generated-case roots:
 - `uni initial condition/`
 - `directional initial condition/`
 
+Standalone package:
+
+- `linear_eta_to_nonlinear_timeseries_package/`
+  Self-contained MATLAB package for converting a unidirectional single-point
+  linear `eta(t)` into nonlinear `eta / phi / u / w`, with demo input,
+  Bingchen Liu test cases, and optional OW3D comparison utilities. The core
+  workflow now uses vendored local dependencies inside the package; the
+  OW3D validation helpers still expect external case data.
+
 Each generator now writes a batch-level `readme` into its output root so the purpose of the generated subdirectories is documented locally.
 
 ## Notes
@@ -64,9 +73,11 @@ Active notes:
 - `notes/surface_velocity_from_surface_potential_note.md`
   Clarifies the difference between bulk potential derivatives and derivatives of the surface-evaluated potential.
 - `notes/surface_kinematics_workflow_summary.md`
-  Short summary of the current OW3D/VWA-style surface-kinematics workflow, including the current strict second-order `u20` finding that the OW3D surface subharmonic `u` is strongly influenced by the sigma-coordinate chain-rule correction.
+  Short summary of the current OW3D/VWA-style surface-kinematics workflow, now updated with the MF12-focused `u20`/`w20` conclusions: `u20` is best compared against `OW3D bare u20`, while `w20` shows a stronger near-surface vertical-location sensitivity.
 - `notes/monochromatic_surface_horizontal_velocity_derivation.md`
   Retained-harmonic monochromatic derivation for surface horizontal velocity.
+- `notes/ow3d_chain_correction_explanation.md`
+  Focused explanation of why the sigma-coordinate chain correction is central for `u20`, and why that same argument does not by itself resolve the present `w20` discrepancy.
 - `notes/monochromatic_surface_phit_from_bulk_explicit.md`
   Bulk-to-surface retained-harmonic derivation for `\phi_t` at the free surface.
 - `notes/TODO_surface_kinematics.md`
@@ -153,6 +164,21 @@ matlab -batch "run('postprocess_ow3d_boundkinematics.m')"
 
 - read the case-specific outputs under `processed_boundkinematics/<case-tag>/`
 
+Additional focused diagnostics now available:
+
+- `compare_ow3d_mf12_u20_surface_tracking.m`
+  Local-window comparison of `OW3D bare u20` against MF12 `u20` evaluated at `z=0` and `z=\eta^{(1)}(x)`.
+- `compare_ow3d_mf12_u20_from_phi_chain.m`
+  Reconstructs an MF12-style raw `u20` from `\phi_{20,x}` plus a chain term built from MF12 first-order fields.
+- `compare_ow3d_mf12_u20_phi_routes.m`
+  Separates the MF12 `u20` routes into direct `u20`, bulk `\phi_{20,x}`, and surface `\phi_{20,x}` for like-for-like comparison with `OW3D bare u20`.
+- `compare_ow3d_mf12_subharmonic_amplitude_budget.m`
+  Joint `u20`/`w20` amplitude-budget diagnostic with raw metrics, least-squares gain, local peak ratios, and gain-adjusted overlays.
+- `compare_ow3d_mf12_w20_sigma_scan.m`
+  Scans the top sigma layers to show how the `w20` comparison depends on the chosen OW3D vertical level and the MF12 evaluation height.
+- `compare_ow3d_mf12_w20_vertical_profile.m`
+  Plots a local vertical profile of OW3D and MF12 `w20(z)` near the free surface to diagnose near-surface vertical-structure differences.
+
 ## Notes
 
 - `Lx_lambda` and `Ly_lambda` control physical domain size in peak wavelengths.
@@ -196,3 +222,5 @@ matlab -batch "run('postprocess_ow3d_boundkinematics.m')"
   Added OW3D `u` decomposition diagnostics showing that the surface subharmonic `u20` is dominated by the sigma-coordinate chain-rule correction, unlike the superharmonic `u2` case.
 - 2026-03-29
   Reworked `postprocess_ow3d_boundkinematics.m` into a `u20`-focused diagnostic: OW3D-consistent `DiffXEven` reconstruction for `phix_sigma`, explicit chain-correction closure, case-tagged output folders, and `OW3D bare u20` vs MF12 `u^{(2-)}` as the primary comparison target.
+- 2026-03-30
+  Added focused MF12/OW3D subharmonic diagnostics for `u20` and `w20`, including route separation for `u20`, amplitude-budget checks, sigma-layer scans for `w20`, and local vertical-profile plots near the free surface.
